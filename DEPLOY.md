@@ -1,117 +1,160 @@
-# Netlify への公開手順
+# 公開手順
 
 静的サイトとして配信する。サーバ側の処理は無く、データは各利用者の
 端末（IndexedDB）にのみ保存される。
 
----
-
-## 方法A: ドラッグ&ドロップ（最短・お試し向き）
-
-ビルド済みの `out/` フォルダを置くだけで公開できる。
-
-1. `npm run build` を実行する（`out/` ができる）
-2. https://app.netlify.com/drop を開く
-3. **`out/` フォルダごと**ドラッグ&ドロップする
-
-数十秒で `https://<ランダム名>.netlify.app` が発行される。
-
-> **注意.** この方法では `netlify.toml` が読まれないため、
-> セキュリティヘッダとキャッシュ制御が効かない。
-> 試用はできるが、**学生に配るなら方法B**にすること。
-> 理由は下の「なぜ方法Bが必要か」を参照。
+**リポジトリ: https://github.com/Yoshitakano/refcite** （公開済み・main ブランチ）
 
 ---
 
-## 方法B: Git 連携（推奨・継続運用向き）
+# 第1部: Netlify に繋ぐ（初回のみ・約5分）
 
-修正を push するたびに自動で再公開される。`netlify.toml` も反映される。
+GitHub への登録は完了している。あとは Netlify と繋ぐだけで公開される。
+**ここから先はブラウザでの操作**で、コマンドは使わない。
 
-### 1. リポジトリを作る
+## 手順1. Netlify にログインする
+
+https://app.netlify.com を開く。
+
+初めての場合は **「Sign up」→「GitHub」** を選ぶ。
+GitHub アカウントでそのままログインでき、パスワードを新しく作る必要はない。
+
+## 手順2. サイトを追加する
+
+画面右上あたりの **「Add new site」** （または「Add new project」）を押し、
+出てきたメニューから **「Import an existing project」** を選ぶ。
+
+> 「Deploy manually」は選ばないこと。
+> そちらは第1部の目的（自動更新と設定の反映）を満たさない。
+
+## 手順3. GitHub を選ぶ
+
+**「Deploy with GitHub」** を押す。
+
+初回は GitHub の認可画面が出る。
+**「Authorize Netlify」** を押して許可する。
+
+> リポジトリの選択を求められたら、`refcite` を選ぶ。
+> 「All repositories」でも「Only select repositories」でも構わない。
+> 迷ったら後者を選び、`refcite` だけにチェックを入れる。
+
+## 手順4. リポジトリを選ぶ
+
+一覧から **`refcite`** を押す。
+
+## 手順5. 設定を確認する
+
+設定画面が出る。**`netlify.toml` から自動で読み込まれる**ので、
+基本的に触る必要はない。下の2つが合っているかだけ確認する。
+
+| 項目 | あるべき値 |
+|---|---|
+| Build command | `npm run build` |
+| Publish directory | `out` |
+
+違っていたら手で直す。合っていれば何もしない。
+
+## 手順6. 公開する
+
+**「Deploy refcite」**（または「Deploy site」）を押す。
+
+ビルドが始まる。**2〜4分**かかる。
+画面にログが流れるが、読まなくてよい。
+
+**「Published」** と緑色で出たら成功。
+
+## 手順7. URL を分かりやすくする
+
+初期状態では `https://sparkling-pastry-a1b2c3.netlify.app` のような
+ランダムな名前になっている。学生に伝えるには不便なので変える。
+
+1. 上部メニューの **「Site configuration」** を開く
+2. **「Site details」→「Change site name」** を押す
+3. `refcite-apu` のように入力して保存
+
+`https://refcite-apu.netlify.app` になる。
+**この URL を学生に伝える。**
+
+---
+
+# 第2部: 公開後の確認（重要）
+
+**HTTPS でしか動かない機能があるため、必ず実機で確認する。**
+特に iPhone は Safari が `BarcodeDetector` に非対応で、
+ZXing というフォールバック実装が実質の本線になる。
+ここは開発環境では確かめられない。
+
+## スマートフォンで
+
+- [ ] iPhone で開ける
+- [ ] **バーコード読取**（カメラ許可 → 本の ISBN バーコードを読む）
+- [ ] Android で開ける
+- [ ] Android でバーコード読取
+- [ ] ホーム画面に追加できる（PWA）
+- [ ] 機内モードにしても起動する（オフライン対応）
+
+## パソコンで
+
+- [ ] 文献を登録し、引用文献リストを **Word に貼り付ける**
+- [ ] 2行目以降が**全角4字下がっている**
+- [ ] URL が **`＜…＞`（全角）** で囲まれている
+- [ ] URL が**アクセス日の後で改行**されている
+
+うまくいかない項目があれば、**どの端末・どのブラウザか**を控えておくと
+原因を特定しやすい。
+
+---
+
+# 第3部: 更新のしかた
+
+コードを直したあと、以下を実行すると**自動で再公開**される。
 
 ```sh
 cd /Users/nomadonoikechan/Projects/refcite
-git init
+npm test                      # 175件。通ってから進む
 git add -A
-git commit -m "refcite: 初回公開"
+git commit -m "修正した内容を書く"
+git push
 ```
 
-GitHub に空のリポジトリを作り（**Private で可**）、
+`git push` から**2〜4分**で反映される。Netlify 側の操作は不要。
 
-```sh
-git remote add origin https://github.com/<あなた>/refcite.git
-git branch -M main
-git push -u origin main
+## 引用書式（CSL）を直したときの注意
+
+`public/sw.js` の `VERSION` を**必ず上げる**こと。
+
+```js
+const VERSION = 'refcite-next-v3';   // → v4 にする
 ```
 
-### 2. Netlify に繋ぐ
-
-1. https://app.netlify.com → **Add new site → Import an existing project**
-2. GitHub を選び、`refcite` を選ぶ
-3. ビルド設定は `netlify.toml` から自動で読まれる。
-   画面に出る値が下と一致していることだけ確認する。
-
-   | 項目 | 値 |
-   |---|---|
-   | Build command | `npm run build` |
-   | Publish directory | `out` |
-
-4. **Deploy** を押す
-
-以後、`git push` するたびに自動で再公開される。
-
-### 3. 公開名を決める
-
-**Site configuration → Change site name** で
-`refcite-apu` のような名前にすると
-`https://refcite-apu.netlify.app` になる。学生に伝えるのはこの URL。
+上げ忘れると、**一度アプリを開いた端末には修正が届かない**。
+学生は気づかないまま古い書式で提出することになる。
 
 ---
 
-## なぜ方法Bが必要か
+# 補足: 設定について
 
-`netlify.toml` に以下を入れてある。方法Aでは**いずれも効かない**。
+`netlify.toml` に以下を入れてある。第1部の手順で自動的に反映される。
 
-| 設定 | 効かないと何が起きるか |
+| 設定 | 無いと何が起きるか |
 |---|---|
-| `/sw.js` を無キャッシュ | 引用書式を直しても、**一度開いた端末は古い書式を使い続ける**。学生は気づかないまま誤った文献リストを提出しうる |
+| `/sw.js` を無キャッシュ | 書式を直しても古い版が使われ続ける |
 | `/csl/*` を無キャッシュ | 同上 |
-| CSP | 万一スクリプトが混入した場合に、書誌データを外部へ送信できてしまう |
+| CSP | 万一スクリプトが混入した際、書誌データを外部へ送信できてしまう |
 | `Permissions-Policy` | カメラ以外の権限が開いたままになる |
 
 `connect-src` は NDL・Crossref・Open Library の3つだけを許可している。
 **取込先 API を増やすときは `netlify.toml` の `connect-src` にも足すこと。**
 忘れると、その API だけ無言で失敗する（ブラウザのコンソールにのみ出る）。
 
----
+## 現在の想定利用者
 
-## 公開後に確認すること
+**APU 内の学生のみ**。学外へ広げるときは、NDL・Crossref の
+利用規約とアクセス頻度を確認すること。
 
-HTTPS でしか動かない機能があるため、**公開後に実機で確認する**。
-特に iPhone は Safari が `BarcodeDetector` 非対応で、
-ZXing フォールバックが実質の本線になる。
-
-- [ ] iPhone でバーコード読取（カメラ許可 → ISBN 読取）
-- [ ] Android でバーコード読取
-- [ ] 引用文献リストを Word に貼り、**2行目が全角4字下がる**こと
-- [ ] URL が `＜…＞`（全角）で、アクセス日の後に改行されること
-- [ ] 機内モードで開き、オフラインでも起動すること（PWA）
-- [ ] ホーム画面に追加できること
-
-## 更新のしかた
+## ローカルで動かす
 
 ```sh
-npm test          # 175件。通ってから push する
-git add -A
-git commit -m "修正内容"
-git push
+npm run dev     # 開発サーバ
+npm start       # ビルドして HTTPS で配信（バーコード確認用）
 ```
-
-引用書式（CSL）を直したときは、`public/sw.js` の `VERSION` を
-必ず上げること。上げ忘れると既存の端末に修正が届かない。
-
-## 注意
-
-- `out/` `public/csl/` `node_modules/` は `.gitignore` 済み。
-  `public/csl/` はビルドで生成されるので、コミットしない。
-- 現在の想定利用者は **APU 内の学生のみ**。
-  学外へ広げるときは、NDL・Crossref の利用規約とアクセス頻度を確認すること。
