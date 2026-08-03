@@ -1,0 +1,175 @@
+:root {
+  --bg: #fbfbfa; --panel: #fff; --line: #e3e3e0; --text: #26251f;
+  --muted: #74736c; --accent: #2d6a4f; --warn: #b45309; --err: #b91c1c;
+  --soft: #fafaf8;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  line-height: 1.7; font-size: 15px;
+}
+
+/* ---- ヘッダ・ナビ ---- */
+header {
+  background: var(--panel); border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; z-index: 10;
+}
+.bar {
+  max-width: 1000px; margin: 0 auto; padding: .8rem 1.2rem .2rem;
+  display: flex; align-items: baseline; gap: .8rem; flex-wrap: wrap;
+}
+.brand { font-size: 1.05rem; font-weight: 600; letter-spacing: .02em; }
+.sub { color: var(--muted); font-size: .8rem; }
+.spacer { margin-left: auto; }
+nav {
+  max-width: 1000px; margin: 0 auto; padding: 0 1.2rem;
+  display: flex; gap: .2rem;
+}
+nav a {
+  padding: .5rem .9rem; text-decoration: none; color: var(--muted);
+  font-size: .9rem; border-bottom: 2px solid transparent;
+}
+nav a:hover { color: var(--text); }
+nav a.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+
+main { max-width: 1000px; margin: 0 auto; padding: 1.2rem; }
+
+section {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; padding: 1.1rem; margin-bottom: 1.1rem;
+}
+h2 {
+  font-size: .82rem; margin: 0 0 .8rem; color: var(--muted);
+  font-weight: 600; letter-spacing: .06em;
+}
+h2 .n { color: var(--text); font-weight: 700; }
+
+/* ---- フォーム ---- */
+input, select, textarea, button {
+  font: inherit; color: inherit;
+  border: 1px solid var(--line); border-radius: 7px;
+  padding: .5rem .7rem; background: #fff;
+}
+input, textarea, select { width: 100%; }
+textarea { resize: vertical; min-height: 4.5em; line-height: 1.8; }
+button {
+  cursor: pointer; background: var(--text); color: #fff; border-color: var(--text);
+  padding: .5rem 1rem; white-space: nowrap; width: auto;
+}
+button:hover { opacity: .88; }
+button.ghost { background: #fff; color: var(--text); border-color: var(--line); }
+button.sm { padding: .3rem .65rem; font-size: .82rem; }
+button.danger { background: #fff; color: var(--err); border-color: #f0d4d4; }
+.row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.row > input, .row > select { flex: 1; min-width: 10rem; }
+label { display: block; font-size: .8rem; color: var(--muted); margin: .7rem 0 .2rem; }
+label .req { color: var(--err); }
+
+.hint { color: var(--muted); font-size: .8rem; margin-top: .5rem; }
+.msg { margin-top: .7rem; padding: .6rem .8rem; border-radius: 7px; font-size: .88rem; }
+.msg.ok { background: #eef6f1; color: var(--accent); }
+.msg.err { background: #fdf0f0; color: var(--err); }
+.msg.warn { background: #fdf6ec; color: var(--warn); }
+
+/* ---- 文献カード ---- */
+.ref { border-top: 1px solid var(--line); padding: .85rem 0; }
+.ref:first-of-type { border-top: none; }
+.ref-title { font-weight: 600; }
+.ref-title a { color: inherit; text-decoration: none; }
+.ref-title a:hover { text-decoration: underline; }
+.ref-meta { color: var(--muted); font-size: .84rem; margin-top: .15rem; }
+.badge {
+  display: inline-block; font-size: .72rem; padding: .05rem .45rem;
+  border-radius: 4px; background: #f0efec; color: var(--muted); margin-left: .4rem;
+  vertical-align: middle;
+}
+.badge.err { background: #fdf0f0; color: var(--err); }
+.badge.ok { background: #eef6f1; color: var(--accent); }
+.preview {
+  margin-top: .5rem; padding: .55rem .8rem; background: var(--soft);
+  border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0;
+  font-size: .92rem;
+}
+.preview .miss { background: #fdecec; color: var(--err); padding: 0 .2rem; border-radius: 3px; }
+.empty { color: var(--muted); font-size: .88rem; padding: .8rem 0; }
+
+/* ---- 抜き書き ---- */
+.note {
+  border: 1px solid var(--line); border-radius: 8px;
+  padding: .7rem .85rem; margin-bottom: .6rem; background: #fff;
+}
+.note.direct { border-left: 3px solid var(--accent); }
+.note.memo { border-left: 3px solid #b8a369; background: #fdfcf8; }
+.note-head {
+  display: flex; align-items: center; gap: .5rem;
+  font-size: .76rem; color: var(--muted); margin-bottom: .35rem;
+}
+.note-body { white-space: pre-wrap; font-size: .93rem; }
+.note.direct .note-body {
+  padding-left: .8rem; border-left: 2px solid #dcdcd6; color: #34332c;
+}
+.page-tag {
+  font-family: ui-monospace, monospace; background: #f0efec;
+  padding: .05rem .4rem; border-radius: 4px; color: var(--text);
+}
+
+/* 引用文に付ける自分のコメント。
+   引用文（他人の言葉）と自分の言葉が視覚的に混ざらないよう、
+   背景と罫線をはっきり変える。 */
+.note-comment {
+  margin-top: .55rem; padding: .5rem .7rem;
+  background: #fdfbf3; border: 1px dashed #ddd0a8; border-radius: 6px;
+  font-size: .89rem; color: #4a4636; white-space: pre-wrap;
+}
+.note-comment .lbl {
+  display: block; font-size: .72rem; color: #96895f;
+  margin-bottom: .2rem; letter-spacing: .04em;
+}
+.comment-edit { margin-top: .55rem; }
+
+/* ---- 出力 ---- */
+.out {
+  background: var(--soft); border: 1px solid var(--line); border-radius: 8px;
+  padding: .95rem; font-size: .92rem;
+}
+.out p { margin: 0 0 .45rem; margin-left: 2em; text-indent: -2em; }
+
+/* ---- 執筆ページ ---- */
+.pick {
+  display: flex; align-items: flex-start; gap: .7rem;
+  border-top: 1px solid var(--line); padding: .7rem 0;
+}
+.pick:first-of-type { border-top: none; }
+.pick input[type=checkbox] { width: auto; margin-top: .35rem; flex: none; }
+.pick-body { flex: 1; min-width: 0; }
+.hit {
+  font-size: .85rem; color: #4a4942; margin-top: .35rem;
+  padding-left: .7rem; border-left: 2px solid #dcdcd6;
+}
+mark { background: #fdf3c9; padding: 0 .1rem; }
+
+/* ---- バーコードスキャナ ---- */
+.scanner {
+  position: relative; margin-top: .8rem;
+  background: #000; border-radius: 10px; overflow: hidden;
+  max-width: 26rem;
+}
+.scanner video {
+  display: block; width: 100%; height: auto; max-height: 60vh;
+  object-fit: cover;
+}
+/* 読み取り位置の目安。ISBN は書籍裏の上段バーコード */
+.scan-frame {
+  position: absolute; inset: 22% 8%;
+  border: 2px solid rgba(255,255,255,.9); border-radius: 8px;
+  box-shadow: 0 0 0 100vmax rgba(0,0,0,.35);
+  pointer-events: none;
+}
+
+dialog {
+  border: 1px solid var(--line); border-radius: 10px; padding: 1.2rem;
+  max-width: 36rem; width: 92%;
+}
+dialog::backdrop { background: rgba(0,0,0,.35); }
+.dlg-actions { display: flex; gap: .5rem; justify-content: flex-end; margin-top: 1rem; }

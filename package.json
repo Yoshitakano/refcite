@@ -1,0 +1,31 @@
+{
+  "name": "refcite",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@xmldom/xmldom": "^0.9.10",
+    "@zxing/browser": "^0.2.1",
+    "@zxing/library": "^0.23.0",
+    "citeproc": "^2.4.63",
+    "dexie": "^4.4.4",
+    "fake-indexeddb": "^6.2.5",
+    "next": "^16.2.12",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "scripts": {
+    "dev": "node scripts/sync-csl.mjs && next dev",
+    "build": "node scripts/sync-csl.mjs && next build",
+    "start": "npm run build && node serve.mjs",
+    "serve": "node serve.mjs",
+    "serve:legacy": "node serve.mjs --legacy",
+    "test": "node test/run.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "typescript": "^6.0.3"
+  }
+}

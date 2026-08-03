@@ -1,0 +1,14 @@
+import { isJapanese, normalizeItem } from '../src/citation/normalize.js';
+import { fetchByDoi } from '../src/import/crossref.js';
+const r = await fetchByDoi('10.7129/jject.10.169');
+const it = r.item;
+console.log('取得した書誌:');
+console.log('  title    :', it.title);
+console.log('  container:', it['container-title']);
+console.log('  publisher:', it.publisher ?? '(なし)');
+console.log('  author   :', it.author ?? '(なし)');
+console.log('  language :', it.language);
+console.log();
+console.log('isJapanese():', isJapanese(it));
+const n = normalizeItem(it);
+console.log('normalize後 annote:', n.annote, '| language:', n.language);

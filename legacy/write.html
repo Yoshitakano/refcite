@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>執筆 — refcite</title>
+<link rel="stylesheet" href="./style.css">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#2d6a4f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script type="importmap">
+{ "imports": { "citeproc": "./vendor/citeproc.mjs", "dexie": "./vendor/dexie.mjs" } }
+</script>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <span class="brand">refcite</span>
+    <span class="sub">レポート執筆</span>
+    <span class="sub spacer" id="status"></span>
+  </div>
+  <nav>
+    <a href="./index.html" data-page="shelf">書架</a>
+    <a href="./write.html" data-page="write">執筆</a>
+  </nav>
+</header>
+
+<main>
+  <section>
+    <h2>執筆中のレポート</h2>
+    <div class="row">
+      <select id="projectSel"></select>
+      <select id="styleSel" style="flex:0 0 auto; width:auto">
+        <option value="apu">APU ライティング・マニュアル</option>
+        <option value="apa">APA 方式</option>
+        <option value="sist02">SIST 02</option>
+      </select>
+      <select id="orderSel" style="flex:0 0 auto; width:auto">
+        <option value="ja-first">和文 → 欧文の順</option>
+        <option value="en-first">欧文 → 和文の順</option>
+      </select>
+    </div>
+    <div class="hint">
+      引用スタイルと並び順はレポートごとに保存されます。
+      和文は50音順、欧文はアルファベット順に整列します。
+    </div>
+  </section>
+
+  <section>
+    <h2>文献をさがす</h2>
+    <div class="row">
+      <input id="searchInput" placeholder="書名・著者・抜き書き・メモの本文を横断検索">
+      <button id="clearBtn" class="ghost">クリア</button>
+    </div>
+    <div class="hint">
+      書架に貯めた文献から探します。抜き書きやメモの中身も検索対象です。
+    </div>
+    <div id="searchMsg" class="hint"></div>
+    <div id="results" style="margin-top:.8rem"></div>
+  </section>
+
+  <section>
+    <h2>このレポートで使う文献 <span class="n" id="usedCount"></span></h2>
+    <div id="used"></div>
+  </section>
+
+  <section>
+    <h2>引用文献リスト</h2>
+    <div id="bibOut" class="out"></div>
+    <div class="row" style="margin-top:.8rem">
+      <button id="copyRich">リッチテキストでコピー</button>
+      <button id="copyPlain" class="ghost">プレーンテキスト</button>
+      <button id="dlTxt" class="ghost">.txt で保存</button>
+    </div>
+    <div class="hint">
+      「リッチテキストでコピー」なら、斜体やぶら下げインデントを保ったまま Word や Google ドキュメントに貼り付けられます。
+    </div>
+    <div id="outMsg"></div>
+  </section>
+
+  <section>
+    <h2>引用に使える抜き書き</h2>
+    <div class="hint" style="margin-top:0;margin-bottom:.7rem">
+      このレポートで使う文献に紐づく抜き書きです。本文に引用する際にそのまま使えます。
+    </div>
+    <div id="quotes"></div>
+  </section>
+</main>
+
+<script type="module" src="./pages/write.js"></script>
+</body>
+</html>

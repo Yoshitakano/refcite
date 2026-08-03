@@ -1,0 +1,11 @@
+import { importByIdentifier } from '../src/import/index.js';
+import { referenceBigrams } from '../src/db/schema.js';
+const r = await importByIdentifier('9784480098252');
+const c = r.reference.csl;
+console.log('csl.author     :', JSON.stringify(c.author));
+console.log('csl.translator :', JSON.stringify(c.translator));
+console.log('transcription  :', JSON.stringify(r.reference.transcription));
+const grams = referenceBigrams(r.reference);
+console.log('\n索引に「バウ」含む:', grams.includes('バウ'));
+console.log('索引に「ba」含む  :', grams.includes('ba'));
+console.log('索引サンプル:', grams.slice(0,18).join(' '));

@@ -1,0 +1,19 @@
+{
+  "name": "refcite — 文献管理・引用リスト作成",
+  "short_name": "refcite",
+  "description": "文献を貯め、抜き書きを残し、レポートの引用文献リストを作る",
+  "lang": "ja",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fbfbfa",
+  "theme_color": "#2d6a4f",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

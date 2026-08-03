@@ -1,0 +1,387 @@
+<?xml version="1.0" encoding="utf-8"?>
+<style xmlns="http://purl.org/net/xbiblio/csl" class="in-text" version="1.0"
+       default-locale="ja-JP" page-range-format="expanded">
+  <info>
+    <title>APU ライティング・マニュアル (日本語)</title>
+    <id>http://refcite.local/styles/apu</id>
+    <summary>立命館アジア太平洋大学 APUライティング・マニュアル Ver.1.0 第2.4節・第5章に準拠</summary>
+    <category citation-format="author-date"/>
+    <updated>2026-08-02T00:00:00+09:00</updated>
+  </info>
+
+  <locale xml:lang="ja">
+    <terms>
+      <term name="et-al">ほか</term>
+      <term name="editor" form="short">編</term>
+      <term name="page" form="short">
+        <single>p.</single>
+        <multiple>pp.</multiple>
+      </term>
+      <term name="no date">n.d.</term>
+      <term name="online">オンライン</term>
+      <term name="retrieved">アクセス日</term>
+      <term name="in">所収</term>
+    </terms>
+  </locale>
+
+  <!--
+    和文判定について。
+    CSL には「language の値が ja か」を直接判定する条件が無い（variable="language"
+    は値ではなく存在の有無しか見ない）。そこで和文書誌には CSL-JSON の
+    `annote` に "ja" を立てる運用とし、annote の有無で分岐する。
+    annote を選ぶ理由: APA・SIST 02 はいずれも annote を出力に使わないため、
+    このフラグが他スタイルの表示を汚さない（genre は APA が "[Ja]" として
+    表示してしまうため使用不可）。
+    正規化層（normalize.js）が language:'ja' から annote:'ja' を自動付与するため、
+    アプリ利用者がこの内部規約を意識する必要はない。
+  -->
+
+  <!--
+    ===== 著者名 =====
+    和文: 姓名を続けて書き、並列は「・」のみ（and は使わない）。全著者を記載。
+
+    substitute に title を入れない理由:
+    CSL 既定では著者が無いときタイトルを著者位置へ繰り上げるが、そうすると
+    後段の title 出力と重複し、かつ『』が外れて書誌が壊れる（実測で確認）。
+    Crossref は和文誌の著者情報を持たないことがあり（author: null）、
+    このケースは実際に起こる。著者不明時は「著者名不明」を出し、
+    タイトルは本来の位置に残す。マニュアル 5.6 のウェブサイトの規定
+    （執筆者不明は「著者名不明」）に倣った。
+  -->
+  <macro name="author">
+    <names variable="author">
+      <name delimiter="・" name-as-sort-order="all" sort-separator=""/>
+      <substitute>
+        <!--
+          編書全体を引用する場合は「田中健一編（2021）」となる
+          （マニュアル 5.4）。著者が無く編者だけのときは「編」を付ける。
+          原文が「編著」でも表記は「編」に統一する（マニュアル 5.3）。
+        -->
+        <names variable="editor" suffix="編">
+          <name delimiter="・" name-as-sort-order="all" sort-separator=""/>
+        </names>
+      </substitute>
+    </names>
+  </macro>
+
+  <!--
+    欧文著者: 姓, 名の頭文字. （マニュアル 5.2 英語）
+    and="text" は既定ロケール（ja-JP）の "と" を拾ってしまうため使わず、
+    and="symbol"（&）を明示する。APA 同様、最終著者の前は "&" とする。
+    initialize-with に半角スペースを与え "P. C." のように頭文字間を空ける。
+  -->
+  <macro name="author-en">
+    <names variable="author">
+      <name and="symbol" delimiter=", " initialize-with=". "
+            name-as-sort-order="all" sort-separator=", "
+            delimiter-precedes-last="always"/>
+      <label form="short" prefix=" (" suffix=")"/>
+      <substitute>
+        <names variable="editor"/>
+      </substitute>
+    </names>
+  </macro>
+
+  <!-- ===== 出版年 ===== -->
+  <!-- 和文は丸カッコ全角・年は半角（マニュアル 5.2） -->
+  <macro name="issued-ja">
+    <choose>
+      <if variable="issued">
+        <group prefix="（" suffix="）">
+          <date variable="issued">
+            <date-part name="year"/>
+          </date>
+          <!--
+            同一著者・同一出版年が複数あるとき a, b, c… を付す
+            （マニュアル 5 章「並べ方の基本ルール」）。
+            本文中の出典表記（例: 石井, 1991b, p.12）と揃える必要があるため、
+            一覧側にも出さないと citeproc が採番しない。
+          -->
+          <text variable="year-suffix"/>
+        </group>
+      </if>
+      <else>
+        <text term="no date" prefix="（" suffix="）"/>
+      </else>
+    </choose>
+  </macro>
+
+  <macro name="issued-en">
+    <choose>
+      <if variable="issued">
+        <group prefix=" (" suffix=").">
+          <date variable="issued">
+            <date-part name="year"/>
+          </date>
+          <text variable="year-suffix"/>
+        </group>
+      </if>
+      <else>
+        <text term="no date" prefix=" (" suffix=")."/>
+      </else>
+    </choose>
+  </macro>
+
+  <!-- ===== 書誌本体 ===== -->
+  <citation et-al-min="3" et-al-use-first="1" disambiguate-add-year-suffix="true">
+    <layout prefix="（" suffix="）" delimiter="; ">
+      <group delimiter=", ">
+        <names variable="author">
+          <name form="short" delimiter="・"/>
+          <substitute>
+            <names variable="editor"/>
+            <text variable="title" form="short"/>
+          </substitute>
+        </names>
+        <!--
+          年と、同一著者・同年を区別する a/b/c（マニュアル 5 章）。
+          year-suffix の出力先をここに置かないと、disambiguate-add-year-suffix
+          を有効にしても citeproc は採番しない（実測で確認）。
+          一覧が「石井六（1991b）」なのに本文中が「石井, 1991」となり
+          食い違うため、両方に置く必要がある。
+        -->
+        <group delimiter="">
+          <date variable="issued">
+            <date-part name="year"/>
+          </date>
+          <text variable="year-suffix"/>
+        </group>
+        <!--
+          ページ数（マニュアル 2.1 表記の細則）
+          1ページなら p.、2ページ以上なら pp.。plural="contextual" が
+          範囲を検出して自動で切り替える。
+        -->
+        <group delimiter="">
+          <label variable="locator" form="short" plural="contextual"/>
+          <text variable="locator"/>
+        </group>
+      </group>
+    </layout>
+  </citation>
+
+  <bibliography hanging-indent="true" entry-spacing="0" line-spacing="1"
+                subsequent-author-substitute="――――"
+                subsequent-author-substitute-rule="complete-all">
+    <sort>
+      <key macro="author"/>
+      <key variable="issued"/>
+    </sort>
+    <layout>
+      <choose>
+        <!-- ============ 和文 ============ -->
+        <if variable="annote" match="any">
+          <choose>
+            <!-- 和文・雑誌論文: 著者（年）「論文名」『雑誌名』巻(号), 開始-終了. -->
+            <if type="article-journal">
+              <group delimiter="">
+                <text macro="author"/>
+                <text macro="issued-ja"/>
+                <text variable="title" prefix="「" suffix="」"/>
+                <text variable="container-title" prefix="『" suffix="』"/>
+                <group delimiter="">
+                  <text variable="volume"/>
+                  <text variable="issue" prefix="(" suffix=")"/>
+                </group>
+                <text variable="page" prefix=", "/>
+                <text value="." />
+              </group>
+            </if>
+            <!-- 和文・章: 著者（年）「章名」編者編『書名』(pp.x-y)出版社. -->
+            <else-if type="chapter">
+              <group delimiter="">
+                <text macro="author"/>
+                <text macro="issued-ja"/>
+                <text variable="title" prefix="「" suffix="」"/>
+                <names variable="editor" suffix="編">
+                  <name delimiter="・" name-as-sort-order="all" sort-separator=""/>
+                </names>
+                <text variable="container-title" prefix="『" suffix="』"/>
+                <text variable="page" prefix="（pp." suffix="）"/>
+                <text variable="publisher"/>
+                <text value="."/>
+              </group>
+            </else-if>
+            <!--
+              和文・学位論文（マニュアル 9.1）
+              著者名（年）『論文タイトル』学位種別, 大学名.
+              マニュアル本体の規定ではなく APA 一般原則からの類推。
+            -->
+            <else-if type="thesis">
+              <group delimiter="">
+                <text macro="author"/>
+                <text macro="issued-ja"/>
+                <text variable="title" prefix="『" suffix="』"/>
+                <text variable="genre" suffix=", "/>
+                <text variable="publisher"/>
+                <text value="."/>
+              </group>
+            </else-if>
+            <!--
+              和文・学会発表（マニュアル 9.2）
+              発表者名（年）「発表タイトル」学会名, 開催地.
+            -->
+            <else-if type="speech paper-conference" match="any">
+              <group delimiter="">
+                <text macro="author"/>
+                <text macro="issued-ja"/>
+                <text variable="title" prefix="「" suffix="」"/>
+                <text variable="event-title"/>
+                <text variable="publisher-place" prefix=", "/>
+                <text value="."/>
+              </group>
+            </else-if>
+            <!--
+              和文・白書／報告書（マニュアル 9.3）
+              発行機関名（年）『白書名』発行機関.
+              統計は URL を伴うのでウェブの分岐に入る（accessed の有無で判別）。
+            -->
+            <else-if type="report">
+              <group delimiter="">
+                <text macro="author"/>
+                <text macro="issued-ja"/>
+                <text variable="title" prefix="『" suffix="』"/>
+                <text variable="publisher"/>
+                <text value="."/>
+              </group>
+            </else-if>
+            <!--
+              和文・新聞記事（マニュアル 5.7）
+              記者名（発行年月日）「見出し:副見出し」『新聞名』朝刊/夕刊, p.ページ.
+              日付は年月日まで出す。朝刊/夕刊の別は edition に入れる運用。
+            -->
+            <else-if type="article-newspaper">
+              <group delimiter="">
+                <text macro="author"/>
+                <date variable="issued" prefix="（" suffix="）">
+                  <date-part name="year" suffix="年"/>
+                  <date-part name="month" form="numeric" suffix="月"/>
+                  <date-part name="day" suffix="日"/>
+                </date>
+                <text variable="title" prefix="「" suffix="」"/>
+                <text variable="container-title" prefix="『" suffix="』"/>
+                <choose>
+                  <!--
+                    オンライン版は（オンライン）アクセス日<URL>で締める。
+                    紙面版は朝刊/夕刊とページ。URL の有無で判別する。
+                  -->
+                  <if variable="URL">
+                    <group delimiter="">
+                      <text value="（オンライン）"/>
+                      <date variable="accessed" suffix="アクセス">
+                        <date-part name="year" suffix="年"/>
+                        <date-part name="month" form="numeric" suffix="月"/>
+                        <date-part name="day" suffix="日"/>
+                      </date>
+                      <!--
+                        URL は全角の山括弧で囲む。半角 < > だと HTML の
+                        タグと紛れて実体参照への変換が要るが、全角なら
+                        素通しできる。
+                        直前の  は改行の目印。CSL は改行を出せないので
+                        出力層（export.js）で <br> や \n に置き換える。
+                      -->
+                      <text variable="URL" prefix="&#11;＜" suffix="＞"/>
+                    </group>
+                  </if>
+                  <else>
+                    <group delimiter="">
+                      <text variable="edition"/>
+                      <text variable="page" prefix=", p."/>
+                      <text value="."/>
+                    </group>
+                  </else>
+                </choose>
+              </group>
+            </else-if>
+            <!-- 和文・ウェブ -->
+            <else-if type="webpage post-weblog" match="any">
+              <group delimiter="">
+                <text macro="author"/>
+                <text macro="issued-ja"/>
+                <text variable="title" prefix="「" suffix="」"/>
+                <text variable="container-title" prefix="『" suffix="』"/>
+                <text value="（オンライン）"/>
+                <date variable="accessed" suffix="アクセス">
+                  <date-part name="year" suffix="年"/>
+                  <date-part name="month" form="numeric" suffix="月"/>
+                  <date-part name="day" suffix="日"/>
+                </date>
+                <!-- 全角の山括弧で囲み、直前で改行する（新聞記事と同じ扱い） -->
+                <text variable="URL" prefix="&#11;＜" suffix="＞"/>
+              </group>
+            </else-if>
+            <!--
+              和文・書籍（既定）: 著者（年）『書名:副題』出版社.
+              訳書は書名のあとに「訳者名 訳」を挟む。マニュアル本体に訳書の
+              規定はないが、訳者を落とすと書誌として不正確になるため補う。
+            -->
+            <else>
+              <group delimiter="">
+                <text macro="author"/>
+                <text macro="issued-ja"/>
+                <text variable="title" prefix="『" suffix="』"/>
+                <names variable="translator" suffix="訳，">
+                  <name delimiter="・" name-as-sort-order="all" sort-separator=""/>
+                </names>
+                <text variable="publisher"/>
+                <text value="."/>
+              </group>
+            </else>
+          </choose>
+        </if>
+
+        <!-- ============ 欧文 ============ -->
+        <else>
+          <choose>
+            <!-- 欧文・雑誌論文: Family, F. (Year). Title. Journal, Vol(Issue), pages. -->
+            <if type="article-journal">
+              <group delimiter="">
+                <text macro="author-en"/>
+                <text macro="issued-en"/>
+                <text variable="title" prefix=" " suffix="."/>
+                <text variable="container-title" prefix=" " font-style="italic"/>
+                <group delimiter="">
+                  <text variable="volume" prefix=", " font-style="italic"/>
+                  <text variable="issue" prefix="(" suffix=")"/>
+                </group>
+                <text variable="page" prefix=", "/>
+                <text value="."/>
+              </group>
+            </if>
+            <!-- 欧文・章 -->
+            <else-if type="chapter">
+              <group delimiter="">
+                <text macro="author-en"/>
+                <text macro="issued-en"/>
+                <text variable="title" prefix=" " suffix="."/>
+                <text value=" In "/>
+                <names variable="editor" suffix=" (Ed.),">
+                  <name and="text" initialize-with="." delimiter=", "/>
+                </names>
+                <text variable="container-title" prefix=" " font-style="italic"/>
+                <text variable="page" prefix=" (pp. " suffix=")"/>
+                <group delimiter=": " prefix=". ">
+                  <text variable="publisher-place"/>
+                  <text variable="publisher"/>
+                </group>
+                <text value="."/>
+              </group>
+            </else-if>
+            <!-- 欧文・書籍: Family, F. (Year). Title. City: Publisher. -->
+            <else>
+              <group delimiter="">
+                <text macro="author-en"/>
+                <text macro="issued-en"/>
+                <text variable="title" prefix=" " font-style="italic" suffix="."/>
+                <group delimiter=": " prefix=" ">
+                  <text variable="publisher-place"/>
+                  <text variable="publisher"/>
+                </group>
+                <text value="."/>
+              </group>
+            </else>
+          </choose>
+        </else>
+      </choose>
+    </layout>
+  </bibliography>
+</style>

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文献の詳細 — refcite</title>
+<link rel="stylesheet" href="./style.css">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#2d6a4f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script type="importmap">
+{ "imports": { "citeproc": "./vendor/citeproc.mjs", "dexie": "./vendor/dexie.mjs" } }
+</script>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <span class="brand">refcite</span>
+    <span class="sub">文献の詳細</span>
+    <span class="sub spacer" id="status"></span>
+  </div>
+  <nav>
+    <a href="./index.html" data-page="shelf">書架</a>
+    <a href="./write.html" data-page="write">執筆</a>
+  </nav>
+</header>
+
+<main>
+  <section>
+    <div class="row" style="margin-bottom:.6rem">
+      <a href="./index.html"><button class="ghost sm">← 書架に戻る</button></a>
+    </div>
+    <h2>書誌情報</h2>
+    <div id="refHead"></div>
+    <div id="refPreview"></div>
+    <div id="refIssues"></div>
+    <div class="row" style="margin-top:.7rem">
+      <button id="editBtn" class="ghost sm">書誌を編集</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>抜き書き（直接引用）<span class="n" id="quoteCount"></span></h2>
+    <div class="hint" style="margin-top:0;margin-bottom:.7rem">
+      原文を一字一句変えずに書き写します。ページ数は引用に必須です。
+    </div>
+    <label>引用文 <span class="req">*</span></label>
+    <textarea id="quoteBody" placeholder="原文をそのまま書き写す"></textarea>
+    <label>この引用へのコメント（任意）</label>
+    <textarea id="quoteComment" style="min-height:3.2em"
+      placeholder="なぜ引いたか、どう使うか、疑問に思ったこと"></textarea>
+    <label>ページ <span class="req">*</span></label>
+    <div class="row">
+      <input id="quotePage" placeholder="45  /  52-54" style="max-width:12rem">
+      <button id="addQuote">抜き書きを追加</button>
+    </div>
+    <div id="quoteMsg"></div>
+    <div id="quoteList" style="margin-top:1rem"></div>
+  </section>
+
+  <section>
+    <h2>所感メモ<span class="n" id="memoCount"></span></h2>
+    <div class="hint" style="margin-top:0;margin-bottom:.7rem">
+      自分の言葉での要約・考察・疑問。ページ数は任意です。
+    </div>
+    <label>メモ</label>
+    <textarea id="memoBody" placeholder="この議論をどう受け止めたか、何が引っかかるか"></textarea>
+    <label>ページ（任意）</label>
+    <div class="row">
+      <input id="memoPage" placeholder="45" style="max-width:12rem">
+      <button id="addMemo">メモを追加</button>
+    </div>
+    <div id="memoMsg"></div>
+    <div id="memoList" style="margin-top:1rem"></div>
+  </section>
+</main>
+
+<dialog id="editDlg">
+  <h2 style="margin-top:0">書誌情報の編集</h2>
+  <div class="hint" style="margin-top:0">
+    自動取得した情報が誤っている場合はここで直せます。
+  </div>
+  <label>タイトル</label>
+  <input id="fTitle">
+  <label>著者（1行に1人、「姓, 名」の形式）</label>
+  <textarea id="fAuthors" placeholder="小磯, 修二&#10;村上, 裕一"></textarea>
+  <label>著者の読み（1行に1人・50音順の並べ替えに使う）</label>
+  <textarea id="fReadings" placeholder="コイソ, シュウジ&#10;ムラカミ, ユウイチ"></textarea>
+  <div class="row">
+    <div style="flex:1">
+      <label>出版年</label>
+      <input id="fYear" placeholder="2018">
+    </div>
+    <div style="flex:2">
+      <label>出版社</label>
+      <input id="fPublisher">
+    </div>
+  </div>
+  <label>収録誌・書名（論文・章の場合）</label>
+  <input id="fContainer">
+  <div class="row">
+    <div style="flex:1"><label>巻</label><input id="fVolume"></div>
+    <div style="flex:1"><label>号</label><input id="fIssue"></div>
+    <div style="flex:1"><label>ページ</label><input id="fPage"></div>
+  </div>
+  <div class="dlg-actions">
+    <button class="ghost" id="editCancel">キャンセル</button>
+    <button id="editSave">保存</button>
+  </div>
+</dialog>
+
+<script type="module" src="./pages/detail.js"></script>
+</body>
+</html>

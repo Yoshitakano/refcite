@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>書架 — refcite</title>
+<link rel="stylesheet" href="./style.css">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#2d6a4f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script type="importmap">
+{ "imports": { "citeproc": "./vendor/citeproc.mjs", "dexie": "./vendor/dexie.mjs" } }
+</script>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <span class="brand">refcite</span>
+    <span class="sub">文献管理・引用リスト作成</span>
+    <span class="sub spacer" id="status"></span>
+  </div>
+  <nav>
+    <a href="./index.html" data-page="shelf">書架</a>
+    <a href="./write.html" data-page="write">執筆</a>
+  </nav>
+</header>
+
+<main>
+  <section>
+    <h2>文献を取り込む</h2>
+    <div class="row">
+      <div style="flex:2; min-width:14rem">
+        <label style="margin-top:0">タイトル</label>
+        <input id="qTitle" placeholder="地方創生を超えて">
+      </div>
+      <div style="flex:1; min-width:9rem">
+        <label style="margin-top:0">著者名</label>
+        <input id="qAuthor" placeholder="小磯">
+      </div>
+      <button id="searchBtn" style="margin-top:1.2rem">さがす</button>
+    </div>
+    <div class="hint">
+      どちらか一方だけでも検索できます。和書は国立国会図書館、洋書は Open Library から探します。
+    </div>
+    <div id="searchStatus"></div>
+    <div id="candidates"></div>
+
+    <details id="codePanel" style="margin-top:1rem">
+      <summary style="cursor:pointer; color:var(--muted); font-size:.88rem">
+        ISBN・DOI で直接取り込む
+      </summary>
+      <div class="row" style="margin-top:.7rem">
+        <input id="idInput" placeholder="978-4-00-023895-3 / 10.1086/227049">
+        <button id="importBtn" class="ghost">取り込む</button>
+        <button id="scanBtn" class="ghost" hidden>バーコードを読む</button>
+      </div>
+      <div class="hint">
+        本が手元にある場合や、論文の DOI が分かっている場合はこちらが確実です。
+      </div>
+      <div id="scanArea" hidden>
+        <div class="scanner">
+          <video id="scanVideo" muted playsinline></video>
+          <div class="scan-frame"></div>
+        </div>
+        <div class="row" style="margin-top:.5rem">
+          <span id="scanStatus" class="hint" style="margin:0; flex:1"></span>
+          <button id="scanStop" class="ghost sm">閉じる</button>
+        </div>
+      </div>
+      <div id="importMsg"></div>
+    </details>
+
+    <details id="manualPanel" style="margin-top:.6rem">
+      <summary style="cursor:pointer; color:var(--muted); font-size:.88rem">
+        検索で見つからない場合は手入力で登録
+      </summary>
+      <div class="row">
+        <div style="flex:2; min-width:12rem">
+          <label>タイトル <span class="req">*</span></label>
+          <input id="mTitle">
+        </div>
+        <div style="flex:1; min-width:8rem">
+          <label>出版年</label>
+          <input id="mYear" placeholder="2020">
+        </div>
+      </div>
+      <label>著者（1行に1人、「姓, 名」の形式）</label>
+      <textarea id="mAuthors" style="min-height:3.2em" placeholder="小磯, 修二&#10;村上, 裕一"></textarea>
+      <label>著者の読み（1行に1人・50音順の並べ替えに使う／任意）</label>
+      <textarea id="mReadings" style="min-height:3.2em" placeholder="コイソ, シュウジ&#10;ムラカミ, ユウイチ"></textarea>
+      <div class="row">
+        <div style="flex:1">
+          <label>種別</label>
+          <select id="mType">
+            <option value="book">書籍</option>
+            <option value="article-journal">雑誌論文</option>
+            <option value="chapter">書籍の章</option>
+          </select>
+        </div>
+        <div style="flex:2">
+          <label>出版社</label>
+          <input id="mPublisher">
+        </div>
+      </div>
+      <label>収録誌・書名（論文・章の場合）</label>
+      <input id="mContainer">
+      <div class="row">
+        <div style="flex:1"><label>巻</label><input id="mVolume"></div>
+        <div style="flex:1"><label>号</label><input id="mIssue"></div>
+        <div style="flex:1"><label>ページ</label><input id="mPage"></div>
+      </div>
+      <div class="row" style="margin-top:.8rem">
+        <button id="manualBtn">この内容で登録</button>
+      </div>
+      <div id="manualMsg"></div>
+    </details>
+  </section>
+
+  <section>
+    <h2>プロジェクト</h2>
+    <div class="row">
+      <select id="projectSel"></select>
+      <button id="newProjBtn" class="ghost">新規</button>
+      <button id="renameProjBtn" class="ghost sm">名前変更</button>
+    </div>
+    <div class="hint">
+      取り込んだ文献はここで選んだプロジェクトに入ります。授業ごとに分けておくと執筆時に楽になります。
+    </div>
+  </section>
+
+  <section>
+    <h2>書架 <span class="n" id="refCount"></span></h2>
+    <div class="row" style="margin-bottom:.8rem">
+      <input id="filterInput" placeholder="書名・著者で絞り込み">
+      <select id="scopeSel" style="flex:0 0 auto; width:auto">
+        <option value="project">このプロジェクトのみ</option>
+        <option value="all">すべての文献</option>
+      </select>
+    </div>
+    <div id="shelf"></div>
+  </section>
+
+  <section>
+    <h2>バックアップ</h2>
+    <div class="row">
+      <button id="dlJson" class="ghost">書き出す（JSON）</button>
+      <button id="upJson" class="ghost">読み込む</button>
+      <input type="file" id="jsonFile" accept="application/json" hidden>
+    </div>
+    <div class="hint">
+      データはこの端末のブラウザ内にのみ保存されます。別の端末へ移すときはこの JSON を使ってください。
+    </div>
+    <div id="backupMsg"></div>
+  </section>
+</main>
+
+<script type="module" src="./pages/shelf.js"></script>
+</body>
+</html>

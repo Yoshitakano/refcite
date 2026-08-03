@@ -1,0 +1,54 @@
+# Netlify 設定
+#
+# 静的書き出し（out/）をそのまま配信する。サーバ機能は使わない。
+# データは各利用者の端末（IndexedDB）にのみ置き、外部 API は
+# ブラウザから直接叩く設計（設計書 §1.1）。
+
+[build]
+  command = "npm run build"
+  publish = "out"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Service Worker は絶対にキャッシュさせない。
+# ここが古いまま残ると、書式を直しても端末が古い SW を使い続け、
+# 利用者は気づかないまま誤った引用文献リストを提出しうる。
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# 引用書式（CSL）も同様。SW 側もネットワーク優先にしてある。
+[[headers]]
+  for = "/csl/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# ビルド成果物はファイル名にハッシュが入るので長期キャッシュしてよい
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # 書誌 API 以外への接続を禁じる。書誌データは利用者の端末にしか
+    # 無いため、万一のスクリプト混入でも外部へ持ち出せないようにする。
+    Content-Security-Policy = """\
+      default-src 'self'; \
+      script-src 'self' 'unsafe-inline'; \
+      style-src 'self' 'unsafe-inline'; \
+      img-src 'self' data: blob:; \
+      font-src 'self'; \
+      connect-src 'self' https://ndlsearch.ndl.go.jp https://api.crossref.org https://openlibrary.org; \
+      worker-src 'self' blob:; \
+      frame-ancestors 'none'; \
+      base-uri 'self'; \
+      form-action 'none'\
+    """
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    # カメラは ISBN バーコード読取で使う。他は塞ぐ
+    Permissions-Policy = "camera=(self), microphone=(), geolocation=(), interest-cohort=()"

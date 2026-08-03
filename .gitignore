@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+.DS_Store
+*.log
+
+# TypeScript のビルドキャッシュ（環境依存の絶対パスを含む）
+*.tsbuildinfo
+
+# ビルドで生成される（src/citation/styles/ が原本）
+public/csl/
+
+# ローカル HTTPS 用の自己署名証明書。秘密鍵なので公開リポジトリに入れない
+.certs/
+*.pem
+*.key
+*.crt
