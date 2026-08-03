@@ -9,6 +9,8 @@
  * （category が「図書」、ISBN あり、出版社あり）を上位に並べ替える。
  */
 
+import { fetchWithTimeout, describeError } from './http.js';
+
 import { ndlToCsl, splitWesternName } from './isbn.js';
 
 const NDL_API = 'https://ndlsearch.ndl.go.jp/api/opensearch';
@@ -96,9 +98,9 @@ export async function searchNdl(q, opts = {}) {
   const f = opts.fetchImpl ?? fetch;
   let res;
   try {
-    res = await f(`${NDL_API}?${params}`);
+    res = await fetchWithTimeout(f, `${NDL_API}?${params}`, { timeout: opts.timeout });
   } catch (e) {
-    return { ok: false, error: `ネットワークエラー: ${e.message}` };
+    return { ok: false, error: describeError(e, 'NDL（国立国会図書館）') };
   }
   if (!res.ok) return { ok: false, error: `NDL への問い合わせに失敗しました（HTTP ${res.status}）` };
 
@@ -133,9 +135,9 @@ export async function searchOpenLibrary(q, opts = {}) {
   const f = opts.fetchImpl ?? fetch;
   let res;
   try {
-    res = await f(`${OL_SEARCH}?${params}`);
+    res = await fetchWithTimeout(f, `${OL_SEARCH}?${params}`, { timeout: opts.timeout });
   } catch (e) {
-    return { ok: false, error: `ネットワークエラー: ${e.message}` };
+    return { ok: false, error: describeError(e, 'Open Library') };
   }
   if (!res.ok) {
     return { ok: false, error: `Open Library への問い合わせに失敗しました（HTTP ${res.status}）` };

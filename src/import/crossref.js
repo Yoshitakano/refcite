@@ -9,6 +9,8 @@
  * 匿名プールでの利用となるので 429 のリトライを入れてある。
  */
 
+import { fetchWithTimeout, describeError } from './http.js';
+
 const API = 'https://api.crossref.org/works/';
 
 /** Crossref の type を CSL-JSON の type へ対応付ける */
@@ -114,6 +116,7 @@ export function crossrefToCsl(msg) {
  * @param {Object} [opts]
  * @param {typeof fetch} [opts.fetchImpl]
  * @param {number} [opts.retries=2]  429/5xx 時のリトライ回数
+ * @param {number} [opts.timeout]  1回あたりの制限時間（ミリ秒）
  * @returns {Promise<{ ok:boolean, item?:Object, error?:string }>}
  */
 export async function fetchByDoi(input, opts = {}) {
@@ -124,16 +127,20 @@ export async function fetchByDoi(input, opts = {}) {
 
   const f = opts.fetchImpl ?? fetch;
   const retries = opts.retries ?? 2;
+  const timeout = opts.timeout;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     let res;
     try {
-      res = await f(API + encodeURIComponent(doi), {
+      res = await fetchWithTimeout(f, API + encodeURIComponent(doi), {
         headers: { Accept: 'application/json' },
+        timeout,
       });
     } catch (e) {
-      if (attempt === retries) {
-        return { ok: false, error: `ネットワークエラー: ${e.message}` };
+      // 時間切れは再試行しない。1 回目で待った時間がそのまま積み上がり、
+      // 3 回で 45 秒待たせることになる。利用者はその間なにもできない。
+      if (e?.timeout || attempt === retries) {
+        return { ok: false, error: describeError(e, 'Crossref') };
       }
       await sleep(400 * (attempt + 1));
       continue;

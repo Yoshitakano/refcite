@@ -165,7 +165,7 @@ export function ImportPanel({ projectId, projectName, onImported }: {
                  placeholder="小磯" />
         </div>
         <button onClick={doSearch} disabled={busy} style={{ marginTop: '1.2rem' }}>
-          さがす
+          {busy ? 'さがしています…' : 'さがす'}
         </button>
       </div>
       <Hint>
@@ -226,7 +226,7 @@ function CodePanel({ onImport, busy }: { onImport: (v: string) => void; busy: bo
                placeholder="978-4-00-023895-3 / 10.1086/227049" />
         <button className="ghost" disabled={busy}
                 onClick={() => { onImport(code); setCode(''); }}>
-          取り込む
+          {busy ? '取り込んでいます…' : '取り込む'}
         </button>
         <BarcodeButton onDetect={(isbn) => { setCode(isbn); onImport(isbn); }} />
       </div>

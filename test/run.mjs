@@ -28,6 +28,9 @@ import { searchNdl, searchBibliography, candidateToCsl } from '../src/import/sea
 import { importManual } from '../src/import/index.js';
 import { refTypesOf, buildManualFields, missingRequired } from '../src/citation/reftypes.js';
 import { classifyBarcode, barcodeToIsbn } from '../src/import/barcode.js';
+import { fetchWithTimeout, describeError } from '../src/import/http.js';
+import { fetchByIsbn } from '../src/import/isbn.js';
+import { fetchByDoi } from '../src/import/crossref.js';
 import { intextPatterns, buildInText, isLongQuote } from '../src/citation/intext.js';
 import { STYLES, PRESET_STYLES, styleOf, DEFAULT_STYLE_ID } from '../src/citation/styles/index.js';
 import * as F from '../src/citation/fixtures.js';
@@ -978,6 +981,80 @@ ok('差し替え: 後始末できている', STYLES.every((x) => x.id !== '__tes
     ok('配信資産: 各方式の CSL が揃っている',
        STYLES.every((x) => files.includes(x.asset)));
   }
+}
+
+// ---------- タイムアウト ----------
+//
+// 書誌 API は無応答になることがある（実測で NDL の初回に 12.5 秒）。
+// 打ち切れないと画面が固まったまま戻らず、利用者に中断の手立てがない。
+{
+  // 応答しない fetch。abort されたときだけ reject する
+  const hang = (url, init) => new Promise((_, rej) => {
+    init?.signal?.addEventListener('abort', () => {
+      const e = new Error('aborted'); e.name = 'AbortError'; rej(e);
+    });
+  });
+
+  // --- 共通ヘルパ ---
+  let timedOut = false;
+  try {
+    await fetchWithTimeout(hang, 'https://example.test/', { timeout: 200 });
+  } catch (e) { timedOut = !!e.timeout; }
+  ok('タイムアウト: 時間切れを timeout 印で返す', timedOut);
+
+  ok('タイムアウト: 通信失敗と時間切れの文言が違う',
+     describeError({ timeout: true }, 'X') !== describeError(new Error('down'), 'X'));
+  ok('タイムアウト: 時間切れの文言は再試行を促す',
+     /時間をおいて/.test(describeError({ timeout: true }, 'X')));
+  ok('タイムアウト: 通信失敗の文言は接続確認を促す',
+     /接続を確認/.test(describeError(new Error('down'), 'X')));
+
+  // --- ISBN: 2 つの API を順に試すので 2 回ぶん待つ ---
+  const t0 = Date.now();
+  const r = await fetchByIsbn('9784000612142', { fetchImpl: hang, timeout: 300 });
+  const spent = Date.now() - t0;
+  ok('タイムアウト: ISBN 取込が待ち続けない', spent < 2000, `${spent}ms`);
+  ok('タイムアウト: ISBN は「見つからない」と誤って伝えない',
+     r.ok === false && !/見つかりませんでした（/.test(r.error) && /応答がありません/.test(r.error),
+     r.error);
+
+  // 2 API を順に試すときの全体上限。1 件ごとの制限だけでは倍待つ
+  const t3 = Date.now();
+  const budgeted = await fetchByIsbn('9784000612142',
+    { fetchImpl: hang, timeout: 1000, totalBudget: 1200 });
+  const bspent = Date.now() - t3;
+  ok('タイムアウト: ISBN 全体の上限が効く', bspent < 1600, `${bspent}ms（2000なら未適用）`);
+  ok('タイムアウト: 上限超過も時間切れとして伝える',
+     budgeted.ok === false && /応答がありません/.test(budgeted.error));
+
+  // --- DOI: 時間切れは再試行しない（3 回ぶん待たせない） ---
+  const t1 = Date.now();
+  const d = await fetchByDoi('10.1086/227049', { fetchImpl: hang, timeout: 300 });
+  const dspent = Date.now() - t1;
+  ok('タイムアウト: DOI の時間切れは再試行しない', dspent < 900, `${dspent}ms`);
+  ok('タイムアウト: DOI が時間切れを伝える', d.ok === false && /応答がありません/.test(d.error));
+
+  // --- 通常のネットワークエラーは従来どおり再試行する ---
+  let calls = 0;
+  const failing = () => { calls++; return Promise.reject(new Error('network down')); };
+  const d2 = await fetchByDoi('10.1086/227049', { fetchImpl: failing, timeout: 300 });
+  ok('タイムアウト: 通信エラーは従来どおり再試行する', calls === 3, `${calls}回`);
+  ok('タイムアウト: 通信エラーは接続確認を促す', /接続を確認/.test(d2.error));
+
+  // --- 検索も打ち切れる ---
+  const t2 = Date.now();
+  const sr = await searchNdl({ title: '社会学' }, { fetchImpl: hang, timeout: 300 });
+  ok('タイムアウト: 著者名・タイトル検索が待ち続けない', Date.now() - t2 < 900);
+  ok('タイムアウト: 検索が時間切れを伝える', sr.ok === false && /応答がありません/.test(sr.error));
+
+  // --- 成功時にタイマーが邪魔をしないこと ---
+  const okFetch = () => Promise.resolve({
+    ok: true, status: 200,
+    text: () => Promise.resolve('<rss></rss>'),
+    json: () => Promise.resolve({ docs: [] }),
+  });
+  const good = await searchNdl({ title: 'x' }, { fetchImpl: okFetch, timeout: 5000 });
+  ok('タイムアウト: 正常時は素通りする', good.ok === true);
 }
 
 // ---------- 結果 ----------

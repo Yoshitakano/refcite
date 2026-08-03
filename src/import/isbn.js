@@ -9,6 +9,8 @@
  * 見つからなければ Open Library、それでも駄目なら手入力へ落とす。
  */
 
+import { fetchWithTimeout, DEFAULT_TIMEOUT, TOTAL_BUDGET } from './http.js';
+
 const NDL_API = 'https://ndlsearch.ndl.go.jp/api/opensearch';
 const OL_API = 'https://openlibrary.org/api/books';
 
@@ -343,6 +345,8 @@ export function splitWesternName(name) {
  * @param {string} input
  * @param {Object} [opts]
  * @param {typeof fetch} [opts.fetchImpl]
+ * @param {number} [opts.timeout]  1 API あたりの制限時間（ミリ秒）
+ * @param {number} [opts.totalBudget]  取込全体の上限（ミリ秒）
  * @returns {Promise<{ok:boolean, csl?:Object, transcription?:Object,
  *                     source?:string, error?:string}>}
  */
@@ -351,19 +355,40 @@ export async function fetchByIsbn(input, opts = {}) {
   if (!isbn) return { ok: false, error: 'ISBN の形式として認識できませんでした' };
 
   const f = opts.fetchImpl ?? fetch;
+  const timeout = opts.timeout;
   // 和書は NDL を先に、洋書は Open Library を先に試す
   const order = isJapaneseIsbn(isbn) ? ['ndl', 'ol'] : ['ol', 'ndl'];
 
   const errors = [];
+  let timedOut = false;
+  // 2 つの API を順に試すので、1 件ごとの制限だけでは最悪 2 倍待つ。
+  // 全体の持ち時間から、残り時間を割り当てる。
+  const started = Date.now();
+  const budget = opts.totalBudget ?? TOTAL_BUDGET;
+
   for (const src of order) {
+    const left = budget - (Date.now() - started);
+    if (left <= 0) { timedOut = true; break; }
+    const each = Math.min(timeout ?? DEFAULT_TIMEOUT, left);
     try {
       const r = src === 'ndl'
-        ? await tryNdl(f, isbn)
-        : await tryOpenLibrary(f, isbn);
+        ? await tryNdl(f, isbn, each)
+        : await tryOpenLibrary(f, isbn, each);
       if (r) return { ok: true, ...r, source: src === 'ndl' ? 'ndl' : 'open_library' };
     } catch (e) {
+      if (e?.timeout) timedOut = true;
       errors.push(`${src}: ${e.message}`);
     }
+  }
+
+  // 時間切れを「見つからなかった」と伝えてはいけない。
+  // 実際には存在する本で、あとで試せば取れる可能性が高い。
+  if (timedOut) {
+    return {
+      ok: false,
+      error: '書誌データベースから応答がありませんでした。混雑しているか、'
+        + '通信が遅い可能性があります。時間をおいて試すか、手入力で登録してください',
+    };
   }
 
   return {
@@ -374,15 +399,15 @@ export async function fetchByIsbn(input, opts = {}) {
   };
 }
 
-async function tryNdl(f, isbn) {
-  const res = await f(`${NDL_API}?isbn=${encodeURIComponent(isbn)}`);
+async function tryNdl(f, isbn, timeout) {
+  const res = await fetchWithTimeout(f, `${NDL_API}?isbn=${encodeURIComponent(isbn)}`, { timeout });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return ndlToCsl(await res.text(), isbn);
 }
 
-async function tryOpenLibrary(f, isbn) {
+async function tryOpenLibrary(f, isbn, timeout) {
   const url = `${OL_API}?bibkeys=ISBN:${encodeURIComponent(isbn)}&format=json&jscmd=data`;
-  const res = await f(url);
+  const res = await fetchWithTimeout(f, url, { timeout });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return openLibraryToCsl(await res.json(), isbn);
 }
