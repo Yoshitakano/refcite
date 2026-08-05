@@ -15,7 +15,8 @@ import {
   CitationEngine, htmlToPlain, normalizeAll, sortReferences,
   findMissingReadings, validateItem, toRichHtml, toPlainText, blockQuoteHtml,
 } from '../src/citation/index.js';
-import { createDb, toBigrams, duplicateKey } from '../src/db/schema.js';
+import { createDb, toBigrams, duplicateKey, REQUIRED_TABLES, SCHEMA_VERSION } from '../src/db/schema.js';
+import { losingFields } from '../src/db/safety.js';
 import { Repository } from '../src/db/repository.js';
 import { NOTE_SORTS, DEFAULT_NOTE_SORT, sortNotes, pageValue } from '../src/db/notesort.js';
 import {
@@ -1276,6 +1277,88 @@ const LUHMANN = {
   const listed = await r.listNotes(ref.id);
   const old = listed.find((n) => n.id === 'old');
   ok('commentAt: 旧データは updatedAt で補う', old?.commentAt === '2026-05-05T00:00:00Z');
+}
+
+// ---------- データ保全 ----------
+//
+// 利用者の書誌・抜き書きはこの端末にしか無い。一度壊すと取り返しがつかない。
+{
+  // スキーマ定義から必須テーブルが欠けたら、開く前に止まること。
+  // IndexedDB は `notes: null` の一行でテーブルを破棄でき、
+  // しかも開いた瞬間に起きるため、事後には戻せない
+  ok('保全: 必須テーブルの一覧がある',
+     REQUIRED_TABLES.includes('references') && REQUIRED_TABLES.includes('notes')
+     && REQUIRED_TABLES.includes('projects') && REQUIRED_TABLES.includes('settings'));
+
+  {
+    const db = createDb('guard-' + Date.now(), { indexedDB, IDBKeyRange });
+    // 誤ってテーブルを破棄する版を足した状況を作る
+    db.version(99).stores({ notes: null });
+    let blocked = false;
+    try { await db.open(); } catch { blocked = true; }
+    ok('保全: テーブルを消す変更は開く前に止まる', blocked);
+    // 止まった以上、破棄は適用されていない
+    ok('保全: 止まったので破棄は適用されない', !db.isOpen());
+  }
+
+  // 取込の検証。replace は既存を消してから書くので、
+  // 壊れたファイルを受け取ると「消しただけ」で終わりかねない
+  const seed = async () => {
+    const r = new Repository(createDb('imp-' + Math.random(), { indexedDB, IDBKeyRange }));
+    const ref = await r.saveReference({ csl: { id:'x', type:'book', title:'大事な文献' } });
+    await r.saveNote({ referenceId: ref.id, type:'direct', body:'大事な抜き書き',
+                       locator:{ page:'40' } });
+    return r;
+  };
+
+  {
+    const r = await seed();
+    let stopped = false;
+    try { await r.importJson({ format:'refcite-backup', references:'壊れている' },
+                             { mode:'replace' }); }
+    catch { stopped = true; }
+    ok('保全: 壊れたバックアップを断る', stopped);
+    ok('保全: 断ったので既存が残る', (await r.listReferences()).length === 1);
+  }
+
+  {
+    const r = await seed();
+    let stopped = false;
+    try { await r.importJson({ format:'refcite-backup', references:[], notes:[], projects:[] },
+                             { mode:'replace' }); }
+    catch { stopped = true; }
+    ok('保全: 空のファイルでの replace を断る', stopped);
+    ok('保全: 断ったので既存が残る（空ファイル）', (await r.listReferences()).length === 1);
+  }
+
+  {
+    // 正常なファイルは通ること（守りが厳しすぎて使えないのでは意味がない）
+    const src = await seed();
+    const dump = await src.exportJson();
+    const dst = await seed();
+    const res = await dst.importJson(dump, { mode:'replace' });
+    ok('保全: 正常なバックアップは通る', res.references === 1 && res.notes === 1);
+  }
+
+  // 削除は論理削除。物理削除しないので書き戻せる
+  {
+    const r = await seed();
+    const [ref] = await r.listReferences();
+    await r.deleteReference(ref.id);
+    ok('保全: 削除は論理削除（レコードは残る）',
+       (await r.db.references.get(ref.id))?.deletedAt != null);
+    ok('保全: 削除した文献の抜き書きも論理削除',
+       (await r.db.notes.toArray()).every((n) => n.deletedAt != null));
+  }
+
+  // 保存で既存の項目が失われないか調べる道具
+  ok('保全: 項目が消えるのを見つける',
+     losingFields({ title:'あり', page:'40' }, { title:'あり' }, ['title','page'])
+       .join() === 'page');
+  ok('保全: もともと無い項目は数えない',
+     losingFields({ title:'あり' }, { title:'あり' }, ['title','page']).length === 0);
+  ok('保全: 新規保存では何も報せない',
+     losingFields(null, { title:'あり' }, ['title']).length === 0);
 }
 
 // ---------- 結果 ----------

@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getRepo } from '@/lib/db';
+import { autoBackupInfo, autoBackupData } from '@lib/db/safety.js';
 import { useEngine, useProjects, type Reference } from '@/lib/hooks';
 import { ImportPanel } from '@/components/ImportPanel';
 import { ProjectBar } from '@/components/ProjectBar';
@@ -153,6 +154,7 @@ export default function ShelfPage() {
         <Hint>
           データはこの端末のブラウザ内にのみ保存されます。別の端末へ移すときはこの JSON を使ってください。
         </Hint>
+        <AutoBackupNotice onRestored={reload} />
         {backupMsg && <Message kind={backupMsg.kind}>{backupMsg.text}</Message>}
       </section>
     </>
@@ -208,6 +210,69 @@ function ShelfItem({
         )}
         <button className="sm danger" onClick={onDelete}>削除</button>
       </div>
+    </div>
+  );
+}
+
+
+/**
+ * 自動で取った控えの案内。
+ *
+ * スキーマの版が上がるときに中身を localStorage へ逃がしている。
+ * 万一そこで取りこぼしがあっても、利用者が自力で書き戻せるようにする。
+ * 控えが無いときは何も出さない（ふだんは目に入らないほうがよい）。
+ */
+function AutoBackupNotice({ onRestored }: { onRestored: () => void }) {
+  const [info, setInfo] = useState<{
+    at: string; counts: { references: number; notes: number; projects: number };
+  } | null>(null);
+  const [msg, setMsg] = useState<{ text: string; kind: MessageKind } | null>(null);
+
+  useEffect(() => { setInfo(autoBackupInfo()); }, []);
+
+  if (!info) return null;
+
+  const when = info.at.slice(0, 10);
+  const { references, notes } = info.counts ?? { references: 0, notes: 0 };
+
+  return (
+    <div className="autobk">
+      <div>
+        <b>自動の控え</b>（{when} 時点：文献 {references} 件 / 抜き書き {notes} 件）
+        <div className="hint" style={{ marginTop: '.15rem' }}>
+          アプリの更新前に自動で取ったものです。ふだん使う必要はありません。
+        </div>
+      </div>
+      <div className="row" style={{ marginTop: '.5rem' }}>
+        <button className="ghost sm" onClick={() => {
+          const data = autoBackupData();
+          if (!data) return;
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = `refcite-自動控え-${when}.json`;
+          a.click();
+          URL.revokeObjectURL(a.href);
+        }}>控えを書き出す</button>
+
+        <button className="ghost sm" onClick={async () => {
+          const data = autoBackupData();
+          if (!data) return;
+          if (!confirm(
+            '自動の控えを取り込みます。\n\n'
+            + '今あるデータは消えません（同じ id のものは控えの内容で上書きされます）。\n'
+            + 'よろしいですか？'
+          )) return;
+          try {
+            const res = await getRepo().importJson(data, { mode: 'merge' });
+            setMsg({ text: `書き戻しました（文献 ${res.references} / 抜き書き ${res.notes}）`, kind: 'ok' });
+            onRestored();
+          } catch (err) {
+            setMsg({ text: '書き戻せませんでした: ' + (err as Error).message, kind: 'err' });
+          }
+        }}>控えから戻す</button>
+      </div>
+      {msg && <Message kind={msg.kind}>{msg.text}</Message>}
     </div>
   );
 }

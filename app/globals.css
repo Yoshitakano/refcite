@@ -289,3 +289,11 @@ section.step h2 {
   padding-left: 1em; border-left: 2px solid var(--line);
   margin-top: .15rem;
 }
+
+/* ---- 自動の控えの案内 ---- */
+/* ふだんは目に入らなくてよいので、警告色は使わず控えめにする */
+.autobk {
+  margin-top: .9rem; padding: .7rem .85rem;
+  background: var(--soft); border: 1px solid var(--line);
+  border-radius: 8px; font-size: .88rem;
+}

@@ -435,7 +435,31 @@ export class Repository {
     if (data?.format !== 'refcite-backup') {
       throw new Error('このファイルは refcite のバックアップではありません');
     }
+
+    // 中身を先に検める。replace は既存を消してから書くので、
+    // 壊れたファイルを受け取ると「消しただけ」で終わりかねない。
+    // 取引はやり直せるが、利用者を不安にさせる前に止める。
+    for (const key of ['references', 'notes', 'projects', 'settings']) {
+      const v = data[key];
+      if (v != null && !Array.isArray(v)) {
+        throw new Error(`バックアップの ${key} が壊れています。取り込みを中止しました`);
+      }
+    }
+
     const mode = opts.mode ?? 'merge';
+
+    // 全部空のファイルで replace すると、ひとことの警告も無く空になる。
+    // 事故（別ファイルの取り違え）の可能性が高いので断る。
+    if (mode === 'replace') {
+      const total = ['references', 'notes', 'projects']
+        .reduce((n, k) => n + (data[k]?.length ?? 0), 0);
+      if (total === 0) {
+        throw new Error(
+          'このバックアップには文献も抜き書きも入っていません。'
+          + '既存のデータを消さないよう、取り込みを中止しました'
+        );
+      }
+    }
 
     await this.db.transaction('rw',
       this.db.references, this.db.notes, this.db.projects, this.db.settings,

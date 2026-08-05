@@ -99,13 +99,26 @@ export function noteBigrams(note) {
  * @param {string} [name]
  * @param {Object} [deps]  テスト用に indexedDB 実装を差し替える
  */
+/**
+ * 利用者のデータが入るテーブル。
+ *
+ * ここから外れると中身ごと消える。IndexedDB のスキーマ変更は
+ * `notes: null` のような一行でテーブルを破棄でき、しかも DB を開いた
+ * 瞬間に起きるため、画面が出たときには手遅れになっている。
+ * createDb の最後で照合し、欠けていたら例外にする。
+ */
+export const REQUIRED_TABLES = ['references', 'notes', 'projects', 'settings'];
+
+/** コードが期待するスキーマの版 */
+export const SCHEMA_VERSION = 1;
+
 export function createDb(name = 'refcite', deps = {}) {
   const db = new Dexie(name, deps.indexedDB ? {
     indexedDB: deps.indexedDB,
     IDBKeyRange: deps.IDBKeyRange,
   } : undefined);
 
-  db.version(1).stores({
+  db.version(SCHEMA_VERSION).stores({
     // 文献
     references: 'id, createdAt, updatedAt, deletedAt, *projectIds, *searchIndex',
     // 抜き書き・考察
@@ -114,6 +127,22 @@ export function createDb(name = 'refcite', deps = {}) {
     projects: 'id, name, createdAt, updatedAt, deletedAt',
     // 設定（引用スタイルの選択など、単一レコード）
     settings: 'key',
+  });
+
+  // 必須テーブルが揃っているか、開く直前に確かめる。
+  //
+  // ready は全ての version() 定義が済んでから走るので、
+  // 版を足す順序に関係なく最終的な形を見られる。ここで例外にすると
+  // Dexie は open を中断するため、テーブルを破棄する変更は適用されない。
+  db.on('ready', () => {
+    const defined = db.tables.map((t) => t.name);
+    const missing = REQUIRED_TABLES.filter((t) => !defined.includes(t));
+    if (missing.length) {
+      throw new Error(
+        `スキーマ定義から必須テーブルが欠けています: ${missing.join(', ')}。`
+        + 'このまま開くと利用者のデータが失われます。'
+      );
+    }
   });
 
   return db;
