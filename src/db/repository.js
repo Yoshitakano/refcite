@@ -180,6 +180,18 @@ export class Repository {
       createdAt: note.createdAt ?? now,
       updatedAt: now,
     };
+
+    // コメントを書いた時刻を別に持つ。
+    // updatedAt はページ数の修正でも動くため、「コメントを付けた順」の
+    // 並べ替えには使えない。中身が変わったときだけ打ち直す。
+    const before = note.id ? await this.db.notes.get(note.id) : null;
+    const changed = (before?.comment ?? '') !== (rec.comment ?? '');
+    if (rec.comment) {
+      rec.commentAt = changed ? now : (before?.commentAt ?? now);
+    } else {
+      delete rec.commentAt;   // コメントを消したら時刻も残さない
+    }
+
     rec.searchIndex = noteBigrams(rec);
     await this.db.notes.put(rec);
     return rec;
@@ -194,6 +206,14 @@ export class Repository {
       .where('referenceId').equals(referenceId)
       .filter((n) => !n.deletedAt)
       .toArray();
+
+    // commentAt を導入する前に付けたコメントには時刻が無い。
+    // 並べ替えたときだけ末尾に固まるのは不自然なので、updatedAt で補う。
+    // 正確ではない（ページ数の修正でも動く）が、無いよりは順序が保てる。
+    for (const n of all) {
+      if (n.comment && !n.commentAt) n.commentAt = n.updatedAt ?? n.createdAt;
+    }
+
     return all.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 

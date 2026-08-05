@@ -17,6 +17,7 @@ import {
 } from '../src/citation/index.js';
 import { createDb, toBigrams, duplicateKey } from '../src/db/schema.js';
 import { Repository } from '../src/db/repository.js';
+import { NOTE_SORTS, DEFAULT_NOTE_SORT, sortNotes, pageValue } from '../src/db/notesort.js';
 import {
   extractDoi, crossrefToCsl,
 } from '../src/import/crossref.js';
@@ -1194,6 +1195,78 @@ const LUHMANN = {
   const empty = buildQuoteList({ engine, items, referenceId:'luhmann',
                                  notes:[], styleId:'apu' });
   ok('一括: 抜き書きが無ければ空', empty.lines.length === 0 && empty.skipped === 0);
+}
+
+// ---------- 抜き書きの並べ替え ----------
+{
+  const mk = (id, created, page, commentAt) => ({
+    id, createdAt: created, locator: page ? { page } : {},
+    ...(commentAt ? { comment: 'メモ', commentAt } : {}),
+  });
+  const NS = [
+    mk('A', '2026-01-01T00:00:00Z', '12-14', '2026-03-01T00:00:00Z'),
+    mk('B', '2026-01-02T00:00:00Z', '7'),
+    mk('C', '2026-01-03T00:00:00Z', '40', '2026-02-01T00:00:00Z'),
+    mk('D', '2026-01-04T00:00:00Z', ''),
+  ];
+  const ids = (id) => sortNotes(NS, id).map((n) => n.id).join('');
+
+  ok('並べ替え: 登録が新しい順', ids('created-desc') === 'DCBA', ids('created-desc'));
+  ok('並べ替え: 登録が古い順', ids('created-asc') === 'ABCD', ids('created-asc'));
+
+  // 文字列比較だと "7" > "12" になる。必ず数値で比べること
+  ok('並べ替え: ページは数値で比べる', ids('page-asc') === 'BACD', ids('page-asc'));
+  ok('並べ替え: 範囲は開始ページで見る', pageValue('12-14') === 12);
+  ok('並べ替え: ページ降順', ids('page-desc') === 'CABD', ids('page-desc'));
+  // 降順で先頭に来ると、本文を追う目的で並べたのに関係ない項目が最初に出る
+  ok('並べ替え: ページ無しは向きによらず末尾',
+     ids('page-asc').endsWith('D') && ids('page-desc').endsWith('D'));
+
+  ok('並べ替え: コメントが新しい順', ids('comment-desc') === 'ACBD', ids('comment-desc'));
+  ok('並べ替え: コメントが古い順', ids('comment-asc') === 'CABD', ids('comment-asc'));
+  ok('並べ替え: コメント無しは末尾',
+     ids('comment-desc').slice(-2) === 'BD' && ids('comment-asc').slice(-2) === 'BD');
+
+  ok('並べ替え: 元の配列を壊さない', NS.map((n) => n.id).join('') === 'ABCD');
+  ok('並べ替え: 未知の指定は既定へ倒す', ids('no-such') === ids(DEFAULT_NOTE_SORT));
+  ok('並べ替え: 選択肢が6つある', NOTE_SORTS.length === 6);
+  ok('並べ替え: 空でも落ちない', sortNotes([], 'page-asc').length === 0
+     && sortNotes(undefined, 'page-asc').length === 0);
+}
+
+// commentAt はコメントの中身が変わったときだけ打ち直す。
+// updatedAt はページ数の修正でも動くため、並べ替えには使えない
+{
+  const r = new Repository(createDb('notesort-' + Date.now(), { indexedDB, IDBKeyRange }));
+  const ref = await r.saveReference({ csl: { id:'x', type:'book', title:'本' } });
+  const n1 = await r.saveNote({ referenceId: ref.id, type:'direct',
+                                body:'引用', locator:{page:'10'} });
+  ok('commentAt: コメントが無ければ持たない', !n1.commentAt);
+
+  const n2 = await r.saveNote({ ...n1, comment: '最初のメモ' });
+  ok('commentAt: コメントを付けたら記録する', !!n2.commentAt);
+
+  // ページ数だけ直す → commentAt は動かない
+  await new Promise((res) => setTimeout(res, 5));
+  const n3 = await r.saveNote({ ...n2, locator: { page: '11' } });
+  ok('commentAt: 他を直しても動かない', n3.commentAt === n2.commentAt);
+  ok('commentAt: updatedAt のほうは動く', n3.updatedAt !== n2.updatedAt);
+
+  // コメントを書き換える → 打ち直す
+  await new Promise((res) => setTimeout(res, 5));
+  const n4 = await r.saveNote({ ...n3, comment: '書き換えた' });
+  ok('commentAt: コメントを変えたら打ち直す', n4.commentAt !== n3.commentAt);
+
+  // コメントを消す → 時刻も消す
+  const n5 = await r.saveNote({ ...n4, comment: undefined });
+  ok('commentAt: コメントを消したら時刻も消す', !n5.commentAt);
+
+  // 旧データ（commentAt を持たない）は updatedAt で補う
+  await r.db.notes.put({ ...n1, id:'old', comment:'昔のメモ',
+                         commentAt: undefined, updatedAt:'2026-05-05T00:00:00Z' });
+  const listed = await r.listNotes(ref.id);
+  const old = listed.find((n) => n.id === 'old');
+  ok('commentAt: 旧データは updatedAt で補う', old?.commentAt === '2026-05-05T00:00:00Z');
 }
 
 // ---------- 結果 ----------

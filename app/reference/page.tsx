@@ -13,6 +13,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { getRepo } from '@/lib/db';
+import { NOTE_SORTS, DEFAULT_NOTE_SORT, sortNotes } from '@lib/db/notesort.js';
 import { useEngine, useProjects, useNotes, type Reference, type Note } from '@/lib/hooks';
 import { NoteItem } from '@/components/NoteList';
 import { ReferenceEditor } from '@/components/ReferenceEditor';
@@ -46,6 +47,7 @@ function ReferenceDetail() {
 
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [noteSort, setNoteSort] = useState(DEFAULT_NOTE_SORT);
 
   const reload = useCallback(async () => {
     if (!id) { setLoading(false); return; }
@@ -69,7 +71,7 @@ function ReferenceDetail() {
   }
 
   const c = reference.csl;
-  const quotes = notes.filter((n) => n.type === 'direct');
+  const quotes = sortNotes(notes.filter((n) => n.type === 'direct'), noteSort);
   const memos = notes.filter((n) => n.type !== 'direct');
   const issues = validateItem(c, { hasDirectQuote: quotes.length > 0 });
 
@@ -129,6 +131,19 @@ function ReferenceDetail() {
 
       <section>
         <h2>抜き書き（直接引用）{quotes.length > 0 && <span className="n"> {quotes.length}件</span>}</h2>
+        {quotes.length > 1 && (
+          <div className="row" style={{ marginBottom: '.6rem' }}>
+            <label style={{ margin: 0, flex: 'none', fontSize: '.84rem', color: 'var(--muted)' }}>
+              並べ替え
+            </label>
+            <select value={noteSort} onChange={(e) => setNoteSort(e.target.value)}
+                    style={{ flex: 'none', width: 'auto' }}>
+              {NOTE_SORTS.map((s) => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
         {quotes.length
           ? quotes.map((n) => <NoteItem key={n.id} note={n} onChanged={refresh} />)
           : <Empty>まだ抜き書きがありません。</Empty>}
