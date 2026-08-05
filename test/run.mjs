@@ -1057,6 +1057,51 @@ ok('差し替え: 後始末できている', STYLES.every((x) => x.id !== '__tes
   ok('タイムアウト: 正常時は素通りする', good.ok === true);
 }
 
+// ---------- 使い方ページの例 ----------
+//
+// 出力例は画面側で引用エンジンに作らせている（直書きすると書式を直したとき
+// 例だけ古くなる）。空や壊れた形で出ると、説明として成立しない。
+{
+  const book = {
+    id:'sample-book', type:'book', language:'ja', title:'地域社会と多文化共生',
+    author:[{family:'田中',given:'太郎'}], issued:{'date-parts':[[2020]]},
+    publisher:'岩波書店',
+  };
+  const news = {
+    id:'sample-news', type:'article-newspaper', language:'ja',
+    title:'地方創生、次の一手は', author:[{family:'岡本',given:'淳'}],
+    issued:{'date-parts':[[2022,8,2]]}, 'container-title':'読売新聞',
+    URL:'https://www.example.co.jp/article', accessed:{'date-parts':[[2023,1,15]]},
+  };
+  const { entries } = engine.renderBibliography(
+    normalizeAll([book, news]), 'apu', { preserveOrder: true });
+  const b = htmlToPlain(entries[0]);
+  const n = htmlToPlain(entries[1]);
+
+  ok('使い方: 書籍の例が正しく出る',
+     b === '田中太郎（2020）『地域社会と多文化共生』岩波書店.', b);
+  ok('使い方: 新聞の例に改行と全角括弧が入る',
+     n.includes('\n\u3000\u3000\u3000\u3000＜') && n.includes('＞'), n);
+
+  const cite = engine.renderCitation(
+    normalizeAll([book]), [{ id:'sample-book', locator:'45' }], 'apu');
+  ok('使い方: 出典表記の例が正しい', cite === '（田中, 2020, p.45）', cite);
+
+  // 画面はブロック引用以外の型を並べる。どれも空にならないこと
+  const shown = intextPatterns('apu').filter((p) => p.id !== 'block');
+  ok('使い方: 並べる引用の型が4つある', shown.length === 4, String(shown.length));
+  ok('使い方: どの型の例も空にならない',
+     shown.every((p) => {
+       const t = buildInText({ patternId: p.id, body: '多文化共生は地域の課題である',
+                               citation: cite, styleId: 'apu' }).text;
+       return t.length > 10 && t.includes('田中') && t.includes('2020');
+     }));
+
+  // 手入力の種別一覧も画面に出す
+  ok('使い方: 文献種別を一覧できる',
+     refTypesOf('apu').length >= 10 && refTypesOf('apu').every((t) => !!t.label));
+}
+
 // ---------- 結果 ----------
 
 console.log('');

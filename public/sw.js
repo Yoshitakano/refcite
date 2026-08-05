@@ -12,7 +12,7 @@
 // 版数を上げると古いキャッシュが破棄される。
 // CSL（引用書式）を直したら必ず上げること。上げ忘れると、
 // 一度アプリを開いた端末では古い書式が使われ続ける。
-const VERSION = 'refcite-next-v3';
+const VERSION = 'refcite-next-v4';
 
 /**
  * 引用スタイルの CSL。
@@ -22,7 +22,7 @@ const VERSION = 'refcite-next-v3';
 const STYLE_ASSETS = ['/csl/apu.csl']; // BUILD:STYLE_ASSETS
 
 /** 起動に最低限必要なもの。ハッシュを含まないパスだけを列挙する */
-const SHELL = ['/', '/reference/', '/write/', '/icon.svg', '/manifest.webmanifest',
+const SHELL = ['/', '/reference/', '/write/', '/help/', '/icon.svg', '/manifest.webmanifest',
                ...STYLE_ASSETS,
                '/csl/locales-ja-JP.xml', '/csl/locales-en-US.xml'];
 

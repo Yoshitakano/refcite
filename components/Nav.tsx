@@ -12,7 +12,8 @@ import { usePathname } from 'next/navigation';
 export function Nav() {
   const pathname = usePathname();
   const isWrite = pathname?.startsWith('/write');
-  const isShelf = !isWrite;
+  const isHelp = pathname?.startsWith('/help');
+  const isShelf = !isWrite && !isHelp;
 
   return (
     <header>
@@ -23,6 +24,7 @@ export function Nav() {
       <nav>
         <Link href="/" className={isShelf ? 'on' : ''}>書架</Link>
         <Link href="/write" className={isWrite ? 'on' : ''}>執筆</Link>
+        <Link href="/help" className={isHelp ? 'on' : ''}>使い方</Link>
       </nav>
     </header>
   );

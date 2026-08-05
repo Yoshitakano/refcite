@@ -176,3 +176,87 @@ dialog {
 }
 dialog::backdrop { background: rgba(0,0,0,.35); }
 .dlg-actions { display: flex; gap: .5rem; justify-content: flex-end; margin-top: 1rem; }
+
+/* ---- 使い方ページ ---- */
+/*
+ * 手順を追う読み物なので、他ページ（一覧・フォーム）より
+ * 行間と余白を広げる。見出しは既定の小さなラベル調ではなく、
+ * 番号付きの見出しとして読ませる。
+ */
+.lead { margin: 0 0 .6rem; font-size: .95rem; }
+.help-p, section.step p { margin: 0 0 .7rem; max-width: 62ch; font-size: .93rem; }
+section.step h3 {
+  font-size: .9rem; font-weight: 600; margin: 1.1rem 0 .4rem;
+}
+section.step h2 {
+  font-size: 1rem; color: var(--text); letter-spacing: 0;
+  display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+}
+.step-n {
+  flex: none;
+  width: 1.6rem; height: 1.6rem; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  display: grid; place-items: center;
+  font-size: .8rem; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.step-where {
+  font-size: .72rem; font-weight: 500; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: .1rem .5rem;
+}
+
+/* 画面上のボタン名。本文と区別が付けば十分なので控えめにする */
+.uikey {
+  font-size: .88em; border: 1px solid var(--line); background: var(--soft);
+  border-radius: 5px; padding: .05em .35em; white-space: nowrap;
+}
+
+.warnbox {
+  border-left: 3px solid var(--warn); background: #fdf6ec;
+  padding: .55rem .75rem; border-radius: 0 6px 6px 0;
+  margin: .8rem 0; font-size: .88rem;
+}
+.warnbox b { color: var(--warn); }
+
+.duo {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: .8rem; margin: .9rem 0;
+}
+.mini {
+  border: 1px solid var(--line); border-radius: 8px;
+  padding: .8rem .9rem; background: var(--soft);
+}
+.mini h3 { margin: 0 0 .35rem; font-size: .92rem; font-weight: 700; }
+.mini p { margin: 0; font-size: .87rem; color: var(--muted); }
+
+/* 出力例。実物と同じ字面で見せたいので等幅にする */
+.exs { display: flex; flex-direction: column; gap: .6rem; margin: .9rem 0; }
+.ex {
+  border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0; background: var(--soft);
+  padding: .6rem .8rem; overflow-x: auto;
+}
+.ex-cap { font-size: .72rem; color: var(--accent); margin-bottom: .3rem; }
+.ex-body { font-size: .9rem; line-height: 1.8; }
+.ex-body.mono {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: .82rem;
+}
+.ex-body.pre { white-space: pre; }
+
+.chips { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .7rem; }
+.chip {
+  font-size: .78rem; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: .15rem .6rem; background: var(--soft);
+}
+
+.qa { display: flex; flex-direction: column; }
+.qa-row { border-top: 1px solid var(--line); padding: .7rem 0; }
+.qa-row:first-child { border-top: none; }
+.qa-q { font-weight: 600; font-size: .9rem; }
+.qa-a { color: var(--muted); font-size: .88rem; margin-top: .15rem; max-width: 62ch; }
+
+.pts { margin: 0; padding-left: 1.1rem; }
+.pts li { margin-bottom: .5rem; font-size: .91rem; max-width: 62ch; }
