@@ -260,3 +260,32 @@ section.step h2 {
 
 .pts { margin: 0; padding-left: 1.1rem; }
 .pts li { margin-bottom: .5rem; font-size: .91rem; max-width: 62ch; }
+
+/* ---- 抜き書きの一括書き出し ---- */
+.qx {
+  margin-top: .9rem; padding-top: .9rem;
+  border-top: 1px dashed var(--line);
+}
+.qx-head {
+  display: flex; align-items: center; gap: .8rem;
+  flex-wrap: wrap; font-size: .9rem;
+}
+.qx-opt {
+  display: flex; align-items: center; gap: .3rem;
+  font-size: .84rem; color: var(--muted); margin-left: auto;
+}
+.qx-opt input { width: auto; }
+.qx-prev {
+  margin-top: .6rem; padding: .7rem .8rem;
+  background: var(--soft); border: 1px solid var(--line); border-radius: 8px;
+  max-height: 22rem; overflow-y: auto;
+}
+.qx-line { font-size: .9rem; line-height: 1.9; }
+.qx-line + .qx-line { margin-top: .8rem; }
+/* コメントは引用と混ざらないよう色と字下げで分ける。
+   混ざったまま本文へ転記されると剽窃になりかねない */
+.qx-memo {
+  color: var(--muted); font-size: .85rem;
+  padding-left: 1em; border-left: 2px solid var(--line);
+  margin-top: .15rem;
+}

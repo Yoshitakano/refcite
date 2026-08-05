@@ -11,10 +11,12 @@
  */
 
 export { CitationEngine, htmlToPlain, sanitizeSpacing } from './engine.js';
-export { normalizeItem, normalizeAll, isJapanese, extractYear } from './normalize.js';
+export { normalizeItem, normalizeAll, normalizeForBibliography,
+         foldTransliteratedNames, isJapanese, extractYear } from './normalize.js';
 export { sortReferences, findMissingReadings, kanaToHira } from './sort.js';
 export { REQUIRED_FIELDS, CSL_TYPES } from './types.js';
 export { intextPatterns, buildInText, isLongQuote, citeParts } from './intext.js';
+export { buildQuoteList, quoteListToText, quoteListToHtml } from './quotes.js';
 export { toRichHtml, toPlainText, blockQuoteHtml,
          copyToClipboard, downloadText } from './export.js';
 

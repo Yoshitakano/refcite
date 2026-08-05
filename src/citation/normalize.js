@@ -109,7 +109,46 @@ export function normalizeItem(item) {
   return out;
 }
 
+/**
+ * 訳書の原著者を「ルーマン, N.」の形に畳む（引用文献一覧用）。
+ *
+ * citeproc はカタカナ姓を CJK 名と判定し、sort-separator を無視して
+ * 空白で繋ぐ（実測: `sort-separator=", "` を与えても「ルーマン N.」）。
+ * CSL 側では変えられないため、姓名を literal に組み立てて渡す。
+ *
+ * 本文中の出典表記は姓のみなので、この変換を通してはいけない
+ * （literal には short 形が無く「（ルーマン, N., 1990）」になる）。
+ * そのため normalizeItem には入れず、一覧を作る経路だけで呼ぶ。
+ *
+ * @param {import('./types.js').CSLItem} item
+ * @returns {import('./types.js').CSLItem}
+ */
+export function foldTransliteratedNames(item) {
+  // 訳者がいる = 訳書 = 原著者は欧文名、という判別
+  if (!Array.isArray(item.translator) || !item.translator.length) return item;
+  if (!Array.isArray(item.author)) return item;
+
+  const author = item.author.map((n) => {
+    if (!n || n.literal || !n.family || !n.given) return n;
+    // 姓がカタカナのみ、名にラテン文字を含むものだけが対象
+    if (!/^[ァ-ヶー・\s]+$/.test(n.family)) return n;
+    if (!/[A-Za-z]/.test(n.given)) return n;
+    // family / given は並べ替え（sort.js）が姓を見るので残す
+    return { ...n, literal: `${n.family}, ${n.given}` };
+  });
+
+  return author.some((n, i) => n !== item.author[i]) ? { ...item, author } : item;
+}
+
 /** 配列版 */
 export function normalizeAll(items) {
   return items.map(normalizeItem);
+}
+
+/**
+ * 引用文献一覧に渡す形へ整える。
+ * normalizeAll に加えて、訳書の原著者名を一覧用の表記へ畳む。
+ */
+export function normalizeForBibliography(items) {
+  return items.map((it) => foldTransliteratedNames(normalizeItem(it)));
 }

@@ -7,6 +7,7 @@
  */
 
 import CSL from 'citeproc';
+import { foldTransliteratedNames } from './normalize.js';
 
 /**
  * 引用エンジン。スタイルとロケールを保持し、書誌リストの整形を行う。
@@ -44,8 +45,12 @@ export class CitationEngine {
     if (!available.length) throw new Error('引用スタイルが読み込まれていません');
     const styleXml = this.styles[styleId] ?? this.styles[available[0]];
 
+    // 訳書の原著者名を一覧用の表記へ畳む（「ルーマン, N.」）。
+    // 本文中の出典表記は姓のみなので renderCitation では行わない。
+    const forBib = items.map(foldTransliteratedNames);
+
     // citeproc は id をキーに同期的に書誌を引きに来るため、事前に索引を作る
-    const byId = new Map(items.map((it) => [String(it.id), it]));
+    const byId = new Map(forBib.map((it) => [String(it.id), it]));
 
     const sys = {
       retrieveItem: (id) => byId.get(String(id)),
@@ -54,7 +59,7 @@ export class CitationEngine {
     };
 
     const engine = new CSL.Engine(sys, styleXml, opts.lang, !!opts.lang);
-    engine.updateItems(items.map((it) => String(it.id)));
+    engine.updateItems(forBib.map((it) => String(it.id)));
 
     const [meta, entries] = engine.makeBibliography();
     const outIds = meta.entry_ids.flat().map(String);

@@ -9,11 +9,11 @@
  * ため必須にし、メモは任意にしている。
  */
 
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { getRepo } from '@/lib/db';
-import { useEngine, useProjects, useNotes, type Reference } from '@/lib/hooks';
+import { useEngine, useProjects, useNotes, type Reference, type Note } from '@/lib/hooks';
 import { NoteItem } from '@/components/NoteList';
 import { ReferenceEditor } from '@/components/ReferenceEditor';
 import {
@@ -21,7 +21,10 @@ import {
   authorLabel, yearLabel, type MessageKind,
 } from '@/components/ui';
 import { DEFAULT_STYLE_ID } from '@/lib/citation';
-import { normalizeAll, validateItem } from '@lib/citation/index.js';
+import {
+  normalizeAll, validateItem, buildQuoteList, quoteListToText, quoteListToHtml,
+  copyToClipboard, downloadText,
+} from '@lib/citation/index.js';
 
 export default function ReferencePage() {
   // 静的書き出しでは useSearchParams に Suspense 境界が要る
@@ -129,6 +132,10 @@ function ReferenceDetail() {
         {quotes.length
           ? quotes.map((n) => <NoteItem key={n.id} note={n} onChanged={refresh} />)
           : <Empty>まだ抜き書きがありません。</Empty>}
+        {quotes.length > 0 && engine && (
+          <QuoteExport reference={reference} notes={quotes}
+                       engine={engine} styleId={styleId} />
+        )}
       </section>
 
       <MemoForm referenceId={reference.id} projectId={current?.id} onAdded={refresh} />
@@ -231,5 +238,100 @@ function MemoForm({ referenceId, projectId, onAdded }: {
       </div>
       {msg && <Message kind={msg.kind}>{msg.text}</Message>}
     </section>
+  );
+}
+
+/**
+ * 抜き書きの一括書き出し。
+ *
+ * 溜めた抜き書きを、すべて「〜〜」（著者, 年, p.数）の形に揃えて出す。
+ * 1件ずつコピーするより、まとめて下書きへ流し込んでから削るほうが早い。
+ *
+ * ページ数の無い抜き書きは出さない。直接引用はページ数が無いと
+ * 引用として成立しないため（マニュアル 2.1）、黙って出すと
+ * 不完全な引用がそのまま本文へ移ってしまう。
+ */
+function QuoteExport({ reference, notes, engine, styleId }: {
+  reference: Reference; notes: Note[]; engine: any; styleId: string;
+}) {
+  const [withComment, setWithComment] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; kind: MessageKind } | null>(null);
+
+  const built = useMemo(() => {
+    try {
+      return buildQuoteList({
+        engine,
+        items: normalizeAll([reference.csl]),
+        referenceId: String(reference.csl.id),
+        notes,
+        styleId,
+        withComment,
+      });
+    } catch {
+      return { lines: [], skipped: 0 };
+    }
+  }, [engine, reference, notes, styleId, withComment]);
+
+  const say = (text: string, kind: MessageKind = 'ok') => {
+    setMsg({ text, kind });
+    setTimeout(() => setMsg(null), 2000);
+  };
+
+  if (!built.lines.length && !built.skipped) return null;
+
+  return (
+    <div className="qx">
+      <div className="qx-head">
+        <b>すべて直接引用の形で書き出す</b>
+        <label className="qx-opt">
+          <input type="checkbox" checked={withComment}
+                 onChange={(e) => setWithComment(e.target.checked)} />
+          自分のコメントも添える
+        </label>
+      </div>
+
+      {built.lines.length > 0 && (
+        <div className="qx-prev">
+          {built.lines.map((l: { text: string; comment?: string }, i: number) => (
+            <div key={i} className="qx-line">
+              <div>{l.text}</div>
+              {l.comment && <div className="qx-memo">［メモ］{l.comment}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {built.skipped > 0 && (
+        <Message kind="warn">
+          ページ数のない抜き書きが {built.skipped} 件あります。
+          直接引用にはページ数が必要なため、書き出しに含めていません。
+        </Message>
+      )}
+
+      {built.lines.length > 0 && (
+        <div className="row" style={{ marginTop: '.6rem' }}>
+          <button onClick={() => {
+            copyToClipboard(
+              quoteListToHtml(built.lines),
+              quoteListToText(built.lines),
+            ).then(() => say(`${built.lines.length}件をコピーしました`))
+             .catch(() => say('コピーできませんでした', 'err'));
+          }}>リッチテキストでコピー</button>
+
+          <button className="ghost" onClick={() => {
+            navigator.clipboard.writeText(quoteListToText(built.lines))
+              .then(() => say(`${built.lines.length}件をコピーしました`))
+              .catch(() => say('コピーできませんでした', 'err'));
+          }}>プレーンテキスト</button>
+
+          <button className="ghost" onClick={() => {
+            const name = String(reference.csl.title ?? '抜き書き').slice(0, 24);
+            downloadText(quoteListToText(built.lines), `${name}_抜き書き.txt`);
+          }}>.txt で保存</button>
+        </div>
+      )}
+
+      {msg && <Message kind={msg.kind}>{msg.text}</Message>}
+    </div>
   );
 }

@@ -33,6 +33,8 @@ import { fetchByIsbn } from '../src/import/isbn.js';
 import { fetchByDoi } from '../src/import/crossref.js';
 import { intextPatterns, buildInText, isLongQuote } from '../src/citation/intext.js';
 import { STYLES, PRESET_STYLES, styleOf, DEFAULT_STYLE_ID } from '../src/citation/styles/index.js';
+import { foldTransliteratedNames } from '../src/citation/normalize.js';
+import { buildQuoteList, quoteListToText, quoteListToHtml } from '../src/citation/quotes.js';
 import * as F from '../src/citation/fixtures.js';
 
 let pass = 0, fail = 0;
@@ -1100,6 +1102,98 @@ ok('差し替え: 後始末できている', STYLES.every((x) => x.id !== '__tes
   // 手入力の種別一覧も画面に出す
   ok('使い方: 文献種別を一覧できる',
      refTypesOf('apu').length >= 10 && refTypesOf('apu').every((t) => !!t.label));
+}
+
+// ---------- 訳書の原著者名 ----------
+//
+// citeproc はカタカナ姓を CJK 名と判定し、sort-separator を無視して
+// 空白で繋ぐ（実測: sort-separator=", " を与えても「ルーマン N.」）。
+// CSL では変えられないので、一覧に渡す前に literal へ畳んでいる。
+const LUHMANN = {
+  id:'luhmann', type:'book', language:'ja',
+  title:'信頼 : 社会的な複雑性の縮減メカニズム',
+  author:[{family:'ルーマン',given:'N.'}],
+  translator:[{family:'大庭',given:'健'},{family:'正村',given:'俊之'}],
+  issued:{'date-parts':[[1990]]}, publisher:'勁草書房',
+};
+{
+  const items = normalizeAll([LUHMANN]);
+  const bib = htmlToPlain(engine.renderBibliography(items, 'apu').entries[0]);
+  ok('訳書: 一覧は「ルーマン, N.」と読点で区切る',
+     bib === 'ルーマン, N.（1990）『信頼 : 社会的な複雑性の縮減メカニズム』大庭健・正村俊之訳，勁草書房.',
+     bib);
+
+  // 本文中は姓のみ。literal を渡すとここが「ルーマン, N., 1990」になる
+  const cite = engine.renderCitation(items, [{ id:'luhmann', locator:'40' }], 'apu');
+  ok('訳書: 本文中の出典表記は姓のみ', cite === '（ルーマン, 1990, p.40）', cite);
+
+  // 和名は続けて書く（巻き込んでいないこと）
+  const jp = normalizeAll([{
+    id:'jp', type:'book', language:'ja', title:'地域社会と多文化共生',
+    author:[{family:'田中',given:'太郎'}], issued:{'date-parts':[[2020]]},
+    publisher:'岩波書店',
+  }]);
+  ok('訳書: 和名は姓名を続けて書く',
+     htmlToPlain(engine.renderBibliography(jp, 'apu').entries[0])
+       === '田中太郎（2020）『地域社会と多文化共生』岩波書店.');
+
+  // 訳者がいない和文の著者は畳まない
+  const notFolded = foldTransliteratedNames(normalizeAll([{
+    id:'x', type:'book', language:'ja', title:'本',
+    author:[{family:'ルーマン',given:'N.'}], issued:{'date-parts':[[1990]]},
+  }])[0]);
+  ok('訳書: 訳者がいなければ畳まない', !notFolded.author[0].literal);
+
+  // 欧文文献は従来どおり
+  const en = normalizeAll([{
+    id:'en', type:'book', title:'Liquid Modernity',
+    author:[{family:'Bauman',given:'Zygmunt'}], issued:{'date-parts':[[2000]]},
+    publisher:'Polity',
+  }]);
+  ok('訳書: 欧文文献は従来どおり',
+     htmlToPlain(engine.renderBibliography(en, 'apu').entries[0]).startsWith('Bauman, Z.'));
+}
+
+// ---------- 抜き書きの一括書き出し ----------
+{
+  const items = normalizeAll([LUHMANN]);
+  const notes = [
+    { id:'n1', type:'direct', locator:{page:'40'},
+      body:'信頼は不確定性を反省し、希望は不確定性を消去するのである',
+      comment:'希望との対比が要点' },
+    { id:'n2', type:'direct', locator:{page:'12-14'}, body:'複雑性の縮減という機能' },
+    { id:'n3', type:'direct', locator:{}, body:'ページを書き忘れた引用' },
+    { id:'n4', type:'indirect', body:'所感メモ' },
+    { id:'n5', type:'direct', locator:{page:'9'}, body:'   ' },
+  ];
+  const r = buildQuoteList({ engine, items, referenceId:'luhmann', notes, styleId:'apu' });
+
+  ok('一括: 直接引用だけを出す', r.lines.length === 2, String(r.lines.length));
+  ok('一括: ページ数の無いものを数える', r.skipped === 1, String(r.skipped));
+  ok('一括: 「〜〜」（著者, 年, p.数）の形に揃う',
+     r.lines[0].text === '「信頼は不確定性を反省し、希望は不確定性を消去するのである」（ルーマン, 1990, p.40）。',
+     r.lines[0].text);
+  ok('一括: 複数ページは pp. になる', r.lines[1].text.includes('pp.12-14'), r.lines[1].text);
+  ok('一括: 既定ではコメントを出さない', r.lines[0].comment === undefined);
+
+  const rc = buildQuoteList({ engine, items, referenceId:'luhmann', notes,
+                              styleId:'apu', withComment:true });
+  ok('一括: 求められればコメントを添える', rc.lines[0].comment === '希望との対比が要点');
+
+  const text = quoteListToText(rc.lines);
+  ok('一括: プレーンでは引用とメモを行で分ける',
+     text.includes('。\n［メモ］希望との対比が要点'), text.slice(0, 90));
+
+  const html = quoteListToHtml(rc.lines);
+  ok('一括: HTML でも引用とメモを分ける',
+     html.includes('［メモ］') && html.includes('color:#666'));
+  ok('一括: HTML にタグを埋め込ませない',
+     !quoteListToHtml([{ text:'<img src=x onerror=alert(1)>' }]).includes('<img'));
+
+  // 抜き書きが無ければ空で返る（画面側は何も出さない）
+  const empty = buildQuoteList({ engine, items, referenceId:'luhmann',
+                                 notes:[], styleId:'apu' });
+  ok('一括: 抜き書きが無ければ空', empty.lines.length === 0 && empty.skipped === 0);
 }
 
 // ---------- 結果 ----------

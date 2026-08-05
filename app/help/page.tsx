@@ -19,15 +19,16 @@ import { DEFAULT_STYLE_ID } from '@/lib/citation';
 import { normalizeAll, htmlToPlain, intextPatterns, buildInText } from '@lib/citation/index.js';
 import { refTypesOf } from '@lib/citation/reftypes.js';
 
-/** 説明用の見本文献。実在の書誌ではなく、書式を見せるためのもの */
+/** 説明用の見本文献（訳書。原著者名・訳者の出方も同時に示せる） */
 const SAMPLE_BOOK = {
   id: 'sample-book',
   type: 'book',
   language: 'ja',
-  title: '地域社会と多文化共生',
-  author: [{ family: '田中', given: '太郎' }],
-  issued: { 'date-parts': [[2020]] },
-  publisher: '岩波書店',
+  title: '信頼 : 社会的な複雑性の縮減メカニズム',
+  author: [{ family: 'ルーマン', given: 'N.' }],
+  translator: [{ family: '大庭', given: '健' }, { family: '正村', given: '俊之' }],
+  issued: { 'date-parts': [[1990]] },
+  publisher: '勁草書房',
 };
 
 const SAMPLE_NEWS = {
@@ -53,10 +54,10 @@ export default function HelpPage() {
       const { entries } = engine.renderBibliography(items, DEFAULT_STYLE_ID,
         { preserveOrder: true });
       const cite = engine.renderCitation(
-        normalizeAll([SAMPLE_BOOK]), [{ id: SAMPLE_BOOK.id, locator: '45' }],
+        normalizeAll([SAMPLE_BOOK]), [{ id: SAMPLE_BOOK.id, locator: '40' }],
         DEFAULT_STYLE_ID);
 
-      const body = '多文化共生は地域の課題である';
+      const body = '信頼は不確定性を反省し、希望は不確定性を消去するのである';
       const intext = intextPatterns(DEFAULT_STYLE_ID)
         .filter((p: { id: string }) => p.id !== 'block')
         .map((p: { id: string; label: string }) => ({
@@ -189,6 +190,24 @@ export default function HelpPage() {
         <Warn>
           直接引用にはページ番号が必要です（マニュアル 2.1）。
           後から本を探し直すのは大変なので、書き写すときに一緒に入れてください。
+        </Warn>
+
+        <h3>溜めた抜き書きをまとめて出す</h3>
+        <p>
+          抜き書きの一覧の下に <Ui>すべて直接引用の形で書き出す</Ui> があります。
+          その文献の抜き書きを<b>すべて「〜〜」（著者, 年, p.数）の形に揃えて</b>
+          まとめてコピーできます。1件ずつ拾うより、
+          下書きへ流し込んでから削るほうが早いです。
+        </p>
+        <p>
+          <Ui>自分のコメントも添える</Ui> にチェックを入れると、
+          引用の下に［メモ］として自分の言葉が付きます。
+          <b>引用と自分の言葉は色を分けてあります。</b>
+          混ざったまま本文に転記すると剽窃になりかねないためです。
+        </p>
+        <Warn>
+          ページ数のない抜き書きは書き出しに<b>含まれません</b>。
+          件数が知らされるので、必要なら書き足してください。
         </Warn>
       </Step>
 
