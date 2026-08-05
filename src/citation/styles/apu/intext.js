@@ -54,10 +54,12 @@ export const INTEXT_PATTERNS = [
     id: 'para-lead',
     label: '間接引用・著者名を地の文に',
     kind: 'indirect',
-    hint: '著者（年）によれば、〜という。',
-    // ページは付けない型
-    build: ({ body, name, year }) => ({
-      text: `${name}（${year}）によれば、${body}`,
+    hint: '著者（年, p.数）によれば、〜という。',
+    // 本文はここで終わるので句点で閉じる。
+    // ページが無いときは「（1990, ）」とならないよう年だけにする
+    build: ({ body, name, year, page }) => ({
+      text: `${name}（${[year, page].filter(Boolean).join(', ')}）によれば、`
+        + `${trimStop(body)}。`,
       block: false,
     }),
   },

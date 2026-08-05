@@ -261,9 +261,18 @@ check('APU 5.7 新聞記事', render({
   check('APU 7章: 間接引用・文末',
     buildInText({ patternId:'para-tail', body, citation: cite('29') }).text,
     `${body}（山田, 2020, p.29）。`);
+  // 地の文に著者を置く型もページを添え、句点で閉じる
   check('APU 7章: 間接引用・地の文',
+    buildInText({ patternId:'para-lead', body, citation: cite('40') }).text,
+    `山田（2020, p.40）によれば、${body}。`);
+  // ページが無いときに「（2020, ）」とならないこと
+  check('APU 7章: 間接引用・地の文（ページなし）',
     buildInText({ patternId:'para-lead', body, citation: cite() }).text,
-    `山田（2020）によれば、${body}`);
+    `山田（2020）によれば、${body}。`);
+  // 本文がすでに句点で終わっていても重ねない
+  check('APU 7章: 間接引用・地の文（句点の重複を避ける）',
+    buildInText({ patternId:'para-lead', body: body + '。', citation: cite('40') }).text,
+    `山田（2020, p.40）によれば、${body}。`);
 
   // 複数ページでも pp. が保たれること（文字列連結だと落ちる）
   ok('APU 7章: 複数ページは pp.',
