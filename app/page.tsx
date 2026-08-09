@@ -83,10 +83,17 @@ export default function ShelfPage() {
                  placeholder="書名・著者で絞り込み" />
           <select value={scope} onChange={(e) => setScope(e.target.value as 'project' | 'all')}
                   style={{ flex: '0 0 auto', width: 'auto' }}>
-            <option value="project">このプロジェクトのみ</option>
+            <option value="project">「{current.name}」の文献</option>
             <option value="all">すべての文献</option>
           </select>
         </div>
+
+        {scope === 'all' && (
+          <Hint>
+            書架にあるすべての文献です。ここでは特定のレポートから外す操作はできません。
+            外すときは「{current.name}」の文献に切り替えてください。
+          </Hint>
+        )}
 
         {!refs.length ? (
           <Empty>
@@ -100,8 +107,14 @@ export default function ShelfPage() {
             noteCount={noteCounts.get(ref.id) ?? 0}
             inProject={(ref.projectIds ?? []).includes(current.id)}
             showProjectBadge={scope === 'all'}
+            allScope={scope === 'all'}
+            projectName={current.name}
             onAdd={async () => {
               await getRepo().assignToProject('reference', ref.id, current.id);
+              reload();
+            }}
+            onRemove={async () => {
+              await getRepo().removeFromProject('reference', ref.id, current.id);
               reload();
             }}
             onDelete={async () => {
@@ -162,11 +175,13 @@ export default function ShelfPage() {
 }
 
 function ShelfItem({
-  reference, engine, styleId, noteCount, inProject, showProjectBadge, onAdd, onDelete,
+  reference, engine, styleId, noteCount, inProject, showProjectBadge,
+  allScope, projectName, onAdd, onRemove, onDelete,
 }: {
   reference: Reference; engine: any; styleId: string; noteCount: number;
-  inProject: boolean; showProjectBadge: boolean;
-  onAdd: () => void; onDelete: () => void;
+  inProject: boolean; showProjectBadge: boolean; allScope: boolean;
+  projectName: string;
+  onAdd: () => void; onRemove: () => void; onDelete: () => void;
 }) {
   const c = reference.csl;
   const issues = validateItem(c);
@@ -205,8 +220,21 @@ function ShelfItem({
         : <div className="preview">プレビューを準備しています…</div>}
       <div className="row" style={{ marginTop: '.5rem' }}>
         <Link href={href}><button className="sm ghost">開く（抜き書き・メモ）</button></Link>
-        {showProjectBadge && !inProject && (
-          <button className="sm ghost" onClick={onAdd}>このプロジェクトに追加</button>
+        {!inProject && (
+          <button className="sm ghost" onClick={onAdd}>
+            「{projectName}」に追加
+          </button>
+        )}
+        {inProject && !allScope && (
+          // 外すだけ。文献は書架に残り、抜き書きも消えない。
+          // 「削除」と紛らわしいので、何が起きるかを文言で示す。
+          //
+          // 「すべての文献」を見ているときは出さない。この一覧は
+          // プロジェクトに関係なく全件を並べるので、外しても表示が
+          // 変わらず、押した結果が見えない（何が起きたか分からない）
+          <button className="sm ghost" onClick={onRemove}>
+            「{projectName}」から外す
+          </button>
         )}
         <button className="sm danger" onClick={onDelete}>削除</button>
       </div>

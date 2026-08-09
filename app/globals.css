@@ -297,3 +297,11 @@ section.step h2 {
   background: var(--soft); border: 1px solid var(--line);
   border-radius: 8px; font-size: .88rem;
 }
+
+/* ---- 抜き書きの編集 ---- */
+.note-edit { margin-top: .5rem; }
+.note-edit label {
+  display: block; font-size: .8rem; color: var(--muted);
+  margin: .5rem 0 .2rem;
+}
+.note-edit label:first-child { margin-top: 0; }

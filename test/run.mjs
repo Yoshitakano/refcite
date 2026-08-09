@@ -1361,6 +1361,108 @@ const LUHMANN = {
      losingFields(null, { title:'あり' }, ['title']).length === 0);
 }
 
+// ---------- プロジェクトから外す ----------
+//
+// 「外す」は「削除」ではない。文献は書架に残り、抜き書きも消えない。
+// 取り違えると、他のレポートで使っている文献まで巻き添えになる
+{
+  const r = new Repository(createDb('rm-' + Date.now(), { indexedDB, IDBKeyRange }));
+  const pA = await r.saveProject({ name: 'レポートA' });
+  const pB = await r.saveProject({ name: 'レポートB' });
+  const ref = await r.saveReference({
+    csl: { id:'x', type:'book', title:'共有する文献' },
+    projectIds: [pA.id, pB.id],
+  });
+  await r.saveNote({ referenceId: ref.id, type:'direct', body:'抜き書き',
+                     locator:{ page:'1' } });
+
+  await r.removeFromProject('reference', ref.id, pA.id);
+
+  ok('外す: 指定したプロジェクトから消える',
+     (await r.listProjectReferences(pA.id)).length === 0);
+  ok('外す: 他のプロジェクトには残る',
+     (await r.listProjectReferences(pB.id)).length === 1);
+  ok('外す: 書架には残る', (await r.listReferences()).length === 1);
+  ok('外す: 抜き書きは消えない', (await r.listNotes(ref.id)).length === 1);
+  ok('外す: 論理削除もされない',
+     (await r.db.references.get(ref.id))?.deletedAt == null);
+
+  // 入れ直せること
+  await r.assignToProject('reference', ref.id, pA.id);
+  ok('外す: 入れ直せる', (await r.listProjectReferences(pA.id)).length === 1);
+
+  // 属していないプロジェクトから外しても壊れない
+  const pC = await r.saveProject({ name: 'レポートC' });
+  await r.removeFromProject('reference', ref.id, pC.id);
+  ok('外す: 属していなくても壊れない', (await r.listReferences()).length === 1);
+}
+
+// ---------- 抜き書きの編集 ----------
+//
+// 画面は既存レコードを土台にして保存する。項目を並べ直すと、
+// そこに書いていない値（projectIds・chapter など）が黙って消える
+{
+  const r = new Repository(createDb('ed-' + Date.now(), { indexedDB, IDBKeyRange }));
+  const ref = await r.saveReference({ csl: { id:'x', type:'book', title:'本' } });
+  const n = await r.saveNote({
+    referenceId: ref.id, type:'direct', body:'元の引用', comment:'元のコメント',
+    locator:{ page:'40', chapter:'第2章' }, projectIds:['p1','p2'],
+  });
+
+  // 画面と同じ形（既存を spread して一部だけ差し替える）
+  const saved = await r.saveNote({
+    ...n, body:'直した引用', comment:'直したコメント',
+    locator:{ ...n.locator, page:'41' },
+  });
+
+  ok('編集: 本文が変わる', saved.body === '直した引用');
+  ok('編集: コメントが変わる', saved.comment === '直したコメント');
+  ok('編集: ページが変わる', saved.locator.page === '41');
+  ok('編集: 触っていない locator の項目が残る', saved.locator.chapter === '第2章');
+  ok('編集: プロジェクトの割り当てが残る', saved.projectIds?.length === 2);
+  ok('編集: 登録日時は変わらない', saved.createdAt === n.createdAt);
+
+  // 本文を書き換えたら検索索引も作り直されること。
+  // 古いままだと、直した抜き書きが検索で引けなくなる
+  const hit = await r.search('直した引用');
+  ok('編集: 新しい本文で検索できる', hit.notes.length === 1);
+  const stale = await r.search('元の引用');
+  ok('編集: 古い本文では引けない', stale.notes.length === 0);
+
+  // コメントを消せること（空文字は undefined になる）
+  const cleared = await r.saveNote({ ...saved, comment: undefined });
+  ok('編集: コメントを消せる', !cleared.comment);
+  ok('編集: コメントを消したら commentAt も消える', !cleared.commentAt);
+}
+
+// ---------- 「すべての文献」表示 ----------
+//
+// プロジェクトに属さない文献が埋もれると、取り込んだのに見つからない
+// という状態になる。全件表示はその受け皿
+{
+  const r = new Repository(createDb('all-' + Date.now(), { indexedDB, IDBKeyRange }));
+  const pA = await r.saveProject({ name: 'レポートA' });
+  await r.saveReference({ csl:{ id:'a', type:'book', title:'Aに属する' },
+                          projectIds:[pA.id] });
+  await r.saveReference({ csl:{ id:'b', type:'book', title:'どこにも属さない' },
+                          projectIds:[] });
+  const del = await r.saveReference({ csl:{ id:'c', type:'book', title:'削除済み' },
+                                      projectIds:[pA.id] });
+  await r.deleteReference(del.id);
+
+  const all = await r.listReferences();
+  const titles = all.map((x) => x.csl.title);
+  ok('全件: プロジェクト未所属の文献も並ぶ', titles.includes('どこにも属さない'));
+  ok('全件: 所属済みの文献も並ぶ', titles.includes('Aに属する'));
+  ok('全件: 削除済みは並ばない', !titles.includes('削除済み'));
+  ok('全件: 件数が合う', all.length === 2, String(all.length));
+
+  // プロジェクト表示は絞られること（全件表示と混同していない）
+  const inA = await r.listProjectReferences(pA.id);
+  ok('全件: プロジェクト表示は絞られる',
+     inA.length === 1 && inA[0].csl.title === 'Aに属する');
+}
+
 // ---------- 結果 ----------
 
 console.log('');
