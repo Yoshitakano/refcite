@@ -12,19 +12,26 @@
 // 版数を上げると古いキャッシュが破棄される。
 // CSL（引用書式）を直したら必ず上げること。上げ忘れると、
 // 一度アプリを開いた端末では古い書式が使われ続ける。
-const VERSION = 'refcite-next-v4';
+const VERSION = 'refcite-next-v5';
 
 /**
  * 引用スタイルの CSL。
  * 方式を足したときに列挙し忘れるとオフラインで開けなくなるため、
  * ビルド（next.config.mjs）が登録簿から書き換える。手で編集しないこと。
  */
-const STYLE_ASSETS = ['/csl/apu.csl']; // BUILD:STYLE_ASSETS
+const STYLE_ASSETS = ['./csl/apu.csl']; // BUILD:STYLE_ASSETS
+
+/**
+ * 配信先の接頭辞（例: /refcite/）。GitHub Pages ではリポジトリ名の下に
+ * 置かれるので、パスは必ずこの SW の位置からの相対で書く。
+ */
+const BASE = new URL('./', self.location).pathname;
 
 /** 起動に最低限必要なもの。ハッシュを含まないパスだけを列挙する */
-const SHELL = ['/', '/reference/', '/write/', '/help/', '/icon.svg', '/manifest.webmanifest',
+const SHELL = ['./', './reference/', './write/', './help/', './icon.svg',
+               './icon-192.png', './icon-512.png', './manifest.webmanifest',
                ...STYLE_ASSETS,
-               '/csl/locales-ja-JP.xml', '/csl/locales-en-US.xml'];
+               './csl/locales-ja-JP.xml', './csl/locales-en-US.xml'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {
@@ -61,7 +68,7 @@ self.addEventListener('fetch', (e) => {
   // 引用書式（CSL）は常に最新を取りに行く。
   // 書式の誤りを直しても古いキャッシュが残ると、ユーザーは気づかないまま
   // 誤った引用文献リストを提出しうる。オフライン時のみキャッシュに落とす。
-  if (url.pathname.startsWith('/csl/')) {
+  if (url.pathname.startsWith(BASE + 'csl/')) {
     e.respondWith((async () => {
       try {
         const fresh = await fetch(request);
@@ -95,7 +102,7 @@ self.addEventListener('fetch', (e) => {
 
     // オフラインで未キャッシュのページを要求されたら書架を返す
     if (request.mode === 'navigate') {
-      const shell = await caches.match('/');
+      const shell = await caches.match(BASE);
       if (shell) return shell;
     }
     return new Response('オフラインのため読み込めませんでした', {

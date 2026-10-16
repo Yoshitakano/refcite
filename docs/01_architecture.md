@@ -1397,6 +1397,31 @@ CSL の配置が `styles/<id>/style.csl` へ変わったため `VERSION` も上�
 **検証.** 21 件をテストへ固定（計 289）。カナの統一・AND・訳者・NFKC・「名姓」を
 それぞれ外す変異のいずれも検出できることを確認済み。ブラウザでも同じ語で確認した。
 
+### 9.21 GitHub Pages への移行（2026-10-16）
+
+Netlify の使用をやめ、GitHub Pages で配信する（`DEPLOY.md`）。
+主な利用形態は Android にインストールしてのオフライン利用。
+
+**a. リポジトリ名の下で動かす.** 公開先が `/refcite/` の下になるため、
+`basePath` を環境変数 `NEXT_PUBLIC_BASE_PATH` で渡す（ローカルでは空）。
+`<Link>` は自動で付くが、`fetch`（CSL）・SW の登録・ZXing の読み込みは
+自前で URL を組んでいたので `lib/base.ts` の `BASE_PATH` を付けた。
+`sw.js` と manifest の中は、置き場所に依存しないよう相対パスにした。
+
+**b. CSP は meta へ.** GitHub Pages は応答ヘッダを設定できない。
+`netlify.toml` にあった CSP を `app/layout.tsx` の meta へ移した。
+`frame-ancestors` と `Permissions-Policy` は meta では効かず、外れた。
+
+**c. PNG アイコン.** Android のインストールには 192/512px の PNG が
+確実なので、`icon.svg` から書き出して manifest に足した。
+
+**d. 公開前にテストを通す.** workflow は `npm test` が落ちると公開しない。
+
+**検証.** `/refcite/` 配下で配る静的サーバで本番ビルドを開き、
+書架・詳細・執筆の遷移、引用プレビュー、SW の登録（scope が `/refcite/`）、
+manifest のアイコン 3 種、オフラインでの再読み込み（書架と引用プレビュー）を
+確認した。接頭辞なしのビルドでも同じ項目が通る。
+
 ## 10. 未決事項
 
 1. ~~プリセットの「一般的な大学標準形式」の定義~~ — **APU ライティング・マニュアル形式に確定**

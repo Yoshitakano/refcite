@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { guardData } from '@/lib/db';
+import { BASE_PATH } from '@/lib/base';
 
 /**
  * 起動時の下ごしらえ。
@@ -21,7 +22,7 @@ export function ServiceWorker() {
     // 失敗しても致命的ではないので握りつぶす（オフライン対応が無いだけで動く）。
     if (process.env.NODE_ENV !== 'production') return;
     if (!('serviceWorker' in navigator)) return;
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register(`${BASE_PATH}/sw.js`, { scope: `${BASE_PATH}/` }).catch(() => {});
   }, []);
   return null;
 }
