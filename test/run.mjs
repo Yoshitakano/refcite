@@ -19,6 +19,7 @@ import { createDb, toBigrams, duplicateKey, REQUIRED_TABLES, SCHEMA_VERSION } fr
 import { losingFields } from '../src/db/safety.js';
 import { Repository } from '../src/db/repository.js';
 import { NOTE_SORTS, DEFAULT_NOTE_SORT, sortNotes, pageValue } from '../src/db/notesort.js';
+import { filterShelf, matchesShelfFilter, normalizeForMatch } from '../src/db/shelffilter.js';
 import {
   extractDoi, crossrefToCsl,
 } from '../src/import/crossref.js';
@@ -1461,6 +1462,62 @@ const LUHMANN = {
   const inA = await r.listProjectReferences(pA.id);
   ok('全件: プロジェクト表示は絞られる',
      inA.length === 1 && inA[0].csl.title === 'Aに属する');
+}
+
+// ---------- 書架の絞り込み ----------
+
+{
+  const luhmann = {
+    id: 'l',
+    csl: {
+      id: 'l', type: 'book', title: '信頼 : 社会的な複雑性の縮減メカニズム',
+      author: [{ family: 'Luhmann', given: 'Niklas' }],
+      translator: [{ family: '大庭', given: '健' }, { family: '正村', given: '俊之' }],
+      publisher: '勁草書房', issued: { 'date-parts': [[1990]] },
+    },
+    transcription: { title: 'シンライ', authors: ['ルーマン'], displayNames: ['ルーマン, N.'] },
+  };
+  const coauthored = {
+    id: 'c',
+    csl: {
+      id: 'c', type: 'book', title: '社会学入門',
+      author: [{ family: '田中', given: '太郎' }, { family: '鈴木', given: '花子' }],
+      issued: { 'date-parts': [[2020]] },
+    },
+    transcription: { authors: ['タナカ タロウ', 'スズキ ハナコ'] },
+  };
+  const article = {
+    id: 'a',
+    csl: {
+      id: 'a', type: 'article-journal', title: 'Liquid Modernity Revisited',
+      author: [{ family: 'Bauman', given: 'Zygmunt' }],
+      'container-title': '社会学評論',
+    },
+  };
+  const all = [luhmann, coauthored, article];
+  const ids = (q) => filterShelf(all, q).map((r) => r.id);
+
+  check('書架: 空の検索語は全件', ids(''), ['l', 'c', 'a']);
+  check('書架: 空白だけも全件', ids('　 '), ['l', 'c', 'a']);
+  check('書架: 書名の部分一致', ids('縮減'), ['l']);
+  check('書架: 複数語は AND（語順が項目順と違っても一致）', ids('ルーマン 信頼'), ['l']);
+  check('書架: 全角空白でも区切る', ids('ルーマン　信頼'), ['l']);
+  check('書架: AND の片方が無ければ不一致', ids('ルーマン 入門'), []);
+  check('書架: 共著の 2 人目で引ける', ids('鈴木'), ['c']);
+  check('書架: 訳者で引ける', ids('正村'), ['l']);
+  check('書架: 欧文名を「名 姓」で打っても引ける', ids('niklas luhmann'), ['l']);
+  check('書架: 欧文名を空白なしで「名姓」と打っても引ける', ids('NiklasLuhmann'), ['l']);
+  check('書架: 大文字小文字を区別しない', ids('BAUMAN'), ['a']);
+  check('書架: 全角英字でも引ける', ids('ｂａｕｍａｎ'), ['a']);
+  check('書架: 読み仮名をひらがなで引ける', ids('すずき'), ['c']);
+  check('書架: 読み仮名の空白を無視', ids('すずきはなこ'), ['c']);
+  check('書架: 掲載誌名で引ける', ids('社会学評論'), ['a']);
+  check('書架: 出版年で引ける', ids('1990'), ['l']);
+  check('書架: 「社会」は書名・誌名・副題すべてに当たる', ids('社会'), ['l', 'c', 'a']);
+  check('書架: 区切り記号を無視（「ルーマン, N.」）', ids('ルーマンn'), ['l']);
+  ok('書架: 単体照合', matchesShelfFilter(luhmann, '勁草') && !matchesShelfFilter(article, '勁草'));
+  check('書架: 正規化（カタカナ→ひらがな・中黒除去）', normalizeForMatch('ジグムント・バウマン'), 'じぐむんとばうまん');
+  ok('書架: 項目をまたいで一致しない', !matchesShelfFilter(coauthored, '太郎鈴木'));
 }
 
 // ---------- 結果 ----------

@@ -6,6 +6,9 @@
 指定形式で出力する。データは端末内（IndexedDB）にのみ保存され、外部へ
 送信されない。
 
+公開先: https://yoshitakano.github.io/refcite/ （Android ではアプリとして
+インストールできる。手順は `DEPLOY.md`）
+
 ## 起動
 
 ```

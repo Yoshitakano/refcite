@@ -26,7 +26,8 @@ for (const s of STYLES) {
 // 手で書くと方式を足したときに漏れ、その端末だけオフラインで開けなくなる。
 {
   const swPath = `${here}/public/sw.js`;
-  const list = STYLES.map((s) => `'/csl/${s.asset}'`).join(', ');
+  // Service Worker の位置からの相対パス。配信先の接頭辞（/refcite/ など）に依存させない
+  const list = STYLES.map((s) => `'./csl/${s.asset}'`).join(', ');
   const sw = readFileSync(swPath, 'utf8');
   const next = sw.replace(
     /^const STYLE_ASSETS = .*; \/\/ BUILD:STYLE_ASSETS$/m,
@@ -45,6 +46,8 @@ for (const s of STYLES) {
  */
 const nextConfig = {
   output: 'export',
+  // GitHub Pages ではリポジトリ名の下に置かれる（lib/base.ts）。ローカルでは空
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH || undefined,
   distDir: '.next',
   images: { unoptimized: true },   // 静的書き出しでは最適化が使えない
   // 末尾スラッシュ付きにすると out/ をそのまま配信したときのパスが安定する

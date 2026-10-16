@@ -19,6 +19,7 @@ import {
 } from '@/components/ui';
 import { DEFAULT_STYLE_ID } from '@/lib/citation';
 import { normalizeAll, validateItem } from '@lib/citation/index.js';
+import { filterShelf } from '@lib/db/shelffilter.js';
 
 export default function ShelfPage() {
   const { engine } = useEngine();
@@ -38,17 +39,7 @@ export default function ShelfPage() {
       ? await repo.listReferences()
       : await repo.listProjectReferences(current.id);
 
-    const f = filter.toLowerCase().replace(/\s/g, '');
-    const filtered = f
-      ? all.filter((r: Reference) => {
-          const hay = [
-            r.csl.title, r.csl.publisher, authorLabel(r.csl),
-            ...(r.transcription?.authorsRaw ?? []),
-            ...(r.transcription?.displayNames ?? []),
-          ].filter(Boolean).join('').toLowerCase().replace(/\s/g, '');
-          return hay.includes(f);
-        })
-      : all;
+    const filtered = filterShelf(all, filter);
 
     setRefs(filtered);
 
@@ -80,7 +71,7 @@ export default function ShelfPage() {
         <h2>書架 <span className="n">{refs.length}件</span></h2>
         <div className="row" style={{ marginBottom: '.8rem' }}>
           <input value={filter} onChange={(e) => setFilter(e.target.value)}
-                 placeholder="書名・著者で絞り込み" />
+                 placeholder="書名・著者名で絞り込み（例: ルーマン 信頼）" />
           <select value={scope} onChange={(e) => setScope(e.target.value as 'project' | 'all')}
                   style={{ flex: '0 0 auto', width: 'auto' }}>
             <option value="project">「{current.name}」の文献</option>

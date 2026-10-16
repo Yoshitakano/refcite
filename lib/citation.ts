@@ -15,6 +15,7 @@ import { CitationEngine } from '@lib/citation/index.js';
 import {
   STYLES, PRESET_STYLES, DEFAULT_STYLE_ID, styleOf,
 } from '@lib/citation/styles/index.js';
+import { BASE_PATH } from '@/lib/base';
 
 export type StyleId = string;
 export type SortOrder = 'ja-first' | 'en-first';
@@ -36,9 +37,9 @@ export function getEngine(): Promise<CitationEngine> {
       });
 
       const [styleXmls, ja, en] = await Promise.all([
-        Promise.all(STYLES.map((s) => load(`/csl/${s.asset}`))),
-        load('/csl/locales-ja-JP.xml'),
-        load('/csl/locales-en-US.xml'),
+        Promise.all(STYLES.map((s) => load(`${BASE_PATH}/csl/${s.asset}`))),
+        load(`${BASE_PATH}/csl/locales-ja-JP.xml`),
+        load(`${BASE_PATH}/csl/locales-en-US.xml`),
       ]);
 
       return new CitationEngine({
